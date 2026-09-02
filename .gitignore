@@ -1,0 +1,17 @@
+# Environment variables
+backend/.env
+backend/.env.*
+
+# Dependencies
+backend/node_modules/
+frontend/node_modules/
+
+# Build files
+frontend/dist/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+desktop.ini

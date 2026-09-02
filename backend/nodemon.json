@@ -1,0 +1,24 @@
+{
+  "restartable": "rs",
+  "ignore": [
+    ".git",
+    "node_modules/**",
+    "src/uploads/**",
+    "src/docs/**",
+    "logs/**",
+    "*.log",
+    ".env",
+    ".env.*",
+    "package-lock.json",
+    "**/*.test.js",
+    "**/*.spec.js",
+    "**/desktop.ini",
+    "**/*.tmp",
+    "**/*.lock"
+  ],
+  "watch": [
+    "src"
+  ],
+  "ext": "js,json",
+  "delay": 1500
+}

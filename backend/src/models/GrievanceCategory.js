@@ -1,0 +1,89 @@
+const { pool } = require('../config/database');
+
+class GrievanceCategory {
+  /**
+   * Find all categories
+   * @param {boolean} [onlyActive=false]
+   * @returns {Promise<Array>}
+   */
+  static async findAll(onlyActive = false) {
+    let query = 'SELECT id, name, description, active, created_at, updated_at FROM grievance_categories';
+    const params = [];
+    if (onlyActive) {
+      query += ' WHERE active = ?';
+      params.push(true);
+    }
+    query += ' ORDER BY name ASC';
+    const [rows] = await pool.execute(query, params);
+    return rows;
+  }
+
+  /**
+   * Find category by ID
+   * @param {number} id
+   * @returns {Promise<Object|null>}
+   */
+  static async findById(id) {
+    const [rows] = await pool.execute(
+      'SELECT id, name, description, active, created_at, updated_at FROM grievance_categories WHERE id = ?',
+      [id]
+    );
+    return rows[0] || null;
+  }
+
+  /**
+   * Find category by Name
+   * @param {string} name
+   * @returns {Promise<Object|null>}
+   */
+  static async findByName(name) {
+    const [rows] = await pool.execute(
+      'SELECT id, name, description, active, created_at, updated_at FROM grievance_categories WHERE name = ?',
+      [name]
+    );
+    return rows[0] || null;
+  }
+
+  /**
+   * Create a new category
+   * @param {Object} data
+   * @returns {Promise<number>}
+   */
+  static async create({ name, description = null, active = true }) {
+    const [result] = await pool.execute(
+      'INSERT INTO grievance_categories (name, description, active) VALUES (?, ?, ?)',
+      [name, description, active]
+    );
+    return result.insertId;
+  }
+
+  /**
+   * Update category
+   * @param {number} id
+   * @param {Object} updates
+   * @returns {Promise<boolean>}
+   */
+  static async update(id, updates) {
+    const allowedFields = ['name', 'description', 'active'];
+    const setClauses = [];
+    const params = [];
+
+    for (const key of allowedFields) {
+      if (updates[key] !== undefined) {
+        setClauses.push(`${key} = ?`);
+        params.push(updates[key]);
+      }
+    }
+
+    if (setClauses.length === 0) return false;
+
+    params.push(id);
+    const [result] = await pool.execute(
+      `UPDATE grievance_categories SET ${setClauses.join(', ')} WHERE id = ?`,
+      params
+    );
+    return result.affectedRows > 0;
+  }
+}
+
+module.exports = GrievanceCategory;
