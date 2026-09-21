@@ -1,21 +1,57 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { grievanceApi } from '../../api/grievances';
+import { deriveNotificationsFromGrievances } from '../../utils/notificationHelper';
 import {
   LayoutDashboard,
   PlusCircle,
   ListOrdered,
+  SearchCheck,
+  Bell,
+  Layers,
+  Star,
+  HelpCircle,
+  User,
+  LogOut,
   ClipboardList,
   BarChart3,
   Users,
   Building2,
   Tags,
-  User,
   ShieldAlert,
 } from 'lucide-react';
 
 export const Sidebar = ({ isOpen, onCloseMobile }) => {
-  const { user, isCitizen, isOfficer, isAdmin } = useAuth();
+  const { user, isCitizen, isOfficer, isAdmin, logout } = useAuth();
+  const navigate = useNavigate();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchUnreadNotifications = async () => {
+    if (!isCitizen) return;
+    try {
+      const res = await grievanceApi.getMy();
+      if (res.success && res.data?.grievances) {
+        const notifs = deriveNotificationsFromGrievances(res.data.grievances);
+        const unread = notifs.filter((n) => !n.isRead).length;
+        setUnreadCount(unread);
+      }
+    } catch {
+      // ignore network errors silently in background badge count
+    }
+  };
+
+  useEffect(() => {
+    fetchUnreadNotifications();
+    const handleUpdate = () => fetchUnreadNotifications();
+    window.addEventListener('civiccare-notifications-updated', handleUpdate);
+    return () => window.removeEventListener('civiccare-notifications-updated', handleUpdate);
+  }, [isCitizen]);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   const getNavLinks = () => {
     if (isAdmin) {
@@ -35,11 +71,16 @@ export const Sidebar = ({ isOpen, onCloseMobile }) => {
         { to: '/profile', label: 'My Profile', icon: User },
       ];
     }
-    // Citizen default
+    // Citizen workspace links (Matches Requirement #9)
     return [
-      { to: '/citizen/dashboard', label: 'Citizen Dashboard', icon: LayoutDashboard },
+      { to: '/citizen/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { to: '/citizen/submit', label: 'Submit Grievance', icon: PlusCircle },
       { to: '/citizen/grievances', label: 'My Grievances', icon: ListOrdered },
+      { to: '/citizen/track', label: 'Track Grievance', icon: SearchCheck },
+      { to: '/citizen/notifications', label: 'Notifications', icon: Bell, badge: unreadCount },
+      { to: '/citizen/services', label: 'Civic Services', icon: Layers },
+      { to: '/citizen/feedback', label: 'Feedback', icon: Star },
+      { to: '/citizen/help', label: 'Help & FAQ', icon: HelpCircle },
       { to: '/profile', label: 'My Profile', icon: User },
     ];
   };
@@ -130,7 +171,7 @@ export const Sidebar = ({ isOpen, onCloseMobile }) => {
                 style={({ isActive }) => ({
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.75rem',
+                  justifyContent: 'space-between',
                   padding: '0.75rem 1rem',
                   borderRadius: 'var(--radius-md)',
                   fontSize: '0.875rem',
@@ -141,11 +182,56 @@ export const Sidebar = ({ isOpen, onCloseMobile }) => {
                   transition: 'all 0.15s ease',
                 })}
               >
-                <Icon size={18} />
-                <span>{link.label}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <Icon size={18} />
+                  <span>{link.label}</span>
+                </div>
+                {Boolean(link.badge) && (
+                  <span
+                    style={{
+                      backgroundColor: 'var(--danger)',
+                      color: '#ffffff',
+                      fontSize: '0.7rem',
+                      fontWeight: 800,
+                      padding: '0.15rem 0.45rem',
+                      borderRadius: 'var(--radius-full)',
+                      minWidth: '18px',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {link.badge}
+                  </span>
+                )}
               </NavLink>
             );
           })}
+
+          {/* Logout in Sidebar menu */}
+          <button
+            onClick={handleLogout}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              padding: '0.75rem 1rem',
+              borderRadius: 'var(--radius-md)',
+              fontSize: '0.875rem',
+              fontWeight: 600,
+              color: '#f87171',
+              backgroundColor: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              marginTop: '0.5rem',
+              width: '100%',
+              textAlign: 'left',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)')}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+          >
+            <LogOut size={18} />
+            <span>Logout</span>
+          </button>
         </nav>
 
         {/* Sidebar Footer info */}

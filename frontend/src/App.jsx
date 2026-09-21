@@ -13,6 +13,11 @@ import RegisterPage from './pages/auth/RegisterPage';
 import CitizenDashboard from './pages/citizen/CitizenDashboard';
 import SubmitGrievancePage from './pages/citizen/SubmitGrievancePage';
 import MyGrievancesPage from './pages/citizen/MyGrievancesPage';
+import TrackGrievancePage from './pages/citizen/TrackGrievancePage';
+import NotificationsPage from './pages/citizen/NotificationsPage';
+import CivicServicesPage from './pages/citizen/CivicServicesPage';
+import FeedbackPage from './pages/citizen/FeedbackPage';
+import HelpFaqPage from './pages/citizen/HelpFaqPage';
 import GrievanceDetailPage from './pages/citizen/GrievanceDetailPage';
 
 // Officer Pages
@@ -87,6 +92,46 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['CITIZEN']}>
                     <MyGrievancesPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/citizen/track"
+                element={
+                  <ProtectedRoute allowedRoles={['CITIZEN']}>
+                    <TrackGrievancePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/citizen/notifications"
+                element={
+                  <ProtectedRoute allowedRoles={['CITIZEN']}>
+                    <NotificationsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/citizen/services"
+                element={
+                  <ProtectedRoute allowedRoles={['CITIZEN']}>
+                    <CivicServicesPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/citizen/feedback"
+                element={
+                  <ProtectedRoute allowedRoles={['CITIZEN']}>
+                    <FeedbackPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/citizen/help"
+                element={
+                  <ProtectedRoute allowedRoles={['CITIZEN']}>
+                    <HelpFaqPage />
                   </ProtectedRoute>
                 }
               />

@@ -12,7 +12,6 @@ import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { Modal } from '../../components/common/Modal';
 import {
   ArrowLeft,
-  Calendar,
   MapPin,
   Building2,
   Tags,
@@ -172,22 +171,81 @@ export const GrievanceDetailPage = () => {
           <span>Back</span>
         </button>
 
-        {/* Action Controls for Officer/Admin */}
-        {(isOfficer || isAdmin) && (
-          <div className="flex items-center gap-2">
-            {isAdmin && (
-              <button onClick={handleOpenAssignModal} className="btn btn-secondary btn-sm">
-                <UserCheck size={16} />
-                <span>Assign Officer</span>
+        <div className="flex items-center gap-2">
+          {/* Quick Track link for all users */}
+          <Link
+            to={`/citizen/track?number=${grievance.grievance_number}`}
+            className="btn btn-outline btn-sm"
+            title="View Visual Status Stepper"
+          >
+            <History size={16} />
+            <span>Track Timeline</span>
+          </Link>
+
+          {/* Citizen Feedback prompt if resolved */}
+          {user?.role === 'CITIZEN' && ['RESOLVED', 'CLOSED'].includes(grievance.status) && (
+            <Link
+              to={`/citizen/feedback?id=${grievance.id}`}
+              className="btn btn-sm"
+              style={{ backgroundColor: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', fontWeight: 700 }}
+            >
+              <span>⭐ Rate Resolution</span>
+            </Link>
+          )}
+
+          {/* Action Controls for Officer/Admin */}
+          {(isOfficer || isAdmin) && (
+            <>
+              {isAdmin && (
+                <button onClick={handleOpenAssignModal} className="btn btn-secondary btn-sm">
+                  <UserCheck size={16} />
+                  <span>Assign Officer</span>
+                </button>
+              )}
+              <button onClick={() => setIsStatusModalOpen(true)} className="btn btn-primary btn-sm">
+                <RefreshCw size={16} />
+                <span>Update Status</span>
               </button>
-            )}
-            <button onClick={() => setIsStatusModalOpen(true)} className="btn btn-primary btn-sm">
-              <RefreshCw size={16} />
-              <span>Update Status</span>
-            </button>
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </div>
+
+      {/* Citizen Feedback Resolution Callout Banner */}
+      {user?.role === 'CITIZEN' && ['RESOLVED', 'CLOSED'].includes(grievance.status) && (
+        <div
+          className="card"
+          style={{
+            backgroundColor: '#ecfdf5',
+            border: '1px solid #a7f3d0',
+            padding: '1.25rem 1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '1rem',
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <CheckCircle size={24} color="#059669" />
+            <div>
+              <div style={{ fontWeight: 800, color: '#065f46', fontSize: '0.9375rem' }}>
+                Grievance Marked as {grievance.status}
+              </div>
+              <div style={{ fontSize: '0.8125rem', color: '#047857' }}>
+                Municipal works have been completed. Please take a moment to provide your satisfaction rating.
+              </div>
+            </div>
+          </div>
+          <Link
+            to={`/citizen/feedback?id=${grievance.id}`}
+            className="btn btn-primary btn-sm"
+            style={{ backgroundColor: '#059669', borderColor: '#059669' }}
+          >
+            <span>Provide Feedback</span>
+          </Link>
+        </div>
+      )}
 
       {/* Main Header Card */}
       <div className="card">
@@ -250,14 +308,21 @@ export const GrievanceDetailPage = () => {
           </div>
         </div>
 
-        {/* Location & Description */}
+        {/* Location, Attachment & Description */}
         <div style={{ marginTop: '1.5rem' }}>
-          {grievance.location && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-              <MapPin size={16} color="var(--danger)" />
-              <span><strong>Location:</strong> {grievance.location}</span>
-            </div>
-          )}
+          <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+            {grievance.location && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                <MapPin size={16} color="var(--danger)" />
+                <span><strong>Location:</strong> {grievance.location}</span>
+              </div>
+            )}
+            {grievance.attachment_path && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary)', fontSize: '0.875rem', fontWeight: 600 }}>
+                <span>📎 Attachment: {grievance.attachment_path.split('/').pop()}</span>
+              </div>
+            )}
+          </div>
 
           <div style={{ marginTop: '0.75rem' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.5rem' }}>Description</h3>
