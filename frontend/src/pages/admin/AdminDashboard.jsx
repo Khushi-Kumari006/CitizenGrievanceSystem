@@ -11,12 +11,7 @@ import {
   Users,
   Shield,
   Building2,
-  Tags,
-  CheckCircle2,
-  Clock,
-  Play,
   ArrowRight,
-  TrendingUp,
 } from 'lucide-react';
 
 export const AdminDashboard = () => {
@@ -66,7 +61,7 @@ export const AdminDashboard = () => {
       <div
         className="card"
         style={{
-          background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)',
+          background: 'linear-gradient(135deg, #0b1329 0%, #1e294b 100%)',
           color: '#ffffff',
           border: 'none',
           padding: '2rem',
@@ -74,14 +69,25 @@ export const AdminDashboard = () => {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-          <span style={{ padding: '0.25rem 0.625rem', backgroundColor: 'rgba(99, 102, 241, 0.3)', borderRadius: 'var(--radius-full)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#c7d2fe' }}>
+          <span
+            style={{
+              padding: '0.25rem 0.625rem',
+              backgroundColor: 'rgba(99, 102, 241, 0.3)',
+              borderRadius: 'var(--radius-full)',
+              fontSize: '0.75rem',
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              color: '#c7d2fe',
+              letterSpacing: '0.05em',
+            }}
+          >
             System Administrator Control Center
           </span>
         </div>
         <h1 style={{ color: '#ffffff', fontSize: '1.75rem', fontWeight: 800 }}>
           Civic Oversight & Analytics Dashboard
         </h1>
-        <p style={{ color: '#c7d2fe', marginTop: '0.25rem', fontSize: '0.9375rem' }}>
+        <p style={{ color: '#94a3b8', marginTop: '0.25rem', fontSize: '0.9375rem' }}>
           Comprehensive city-wide analytics, department resolution rates, and user administration metrics.
         </p>
       </div>

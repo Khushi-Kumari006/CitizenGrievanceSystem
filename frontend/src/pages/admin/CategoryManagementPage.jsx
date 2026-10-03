@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { categoryApi } from '../../api/categories';
 import { useToast } from '../../context/ToastContext';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
@@ -23,7 +23,7 @@ export const CategoryManagementPage = () => {
 
   const { showToast } = useToast();
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       const res = await categoryApi.getAll();
       if (res.success && res.data) {
@@ -34,11 +34,11 @@ export const CategoryManagementPage = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [showToast]);
 
   useEffect(() => {
     fetchCategories();
-  }, []);
+  }, [fetchCategories]);
 
   const filteredCategories = categories.filter(
     (c) =>
@@ -232,7 +232,7 @@ export const CategoryManagementPage = () => {
             />
           </div>
 
-          <div className="form-group">
+          <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
             <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
               <input
                 type="checkbox"
@@ -283,7 +283,7 @@ export const CategoryManagementPage = () => {
             />
           </div>
 
-          <div className="form-group">
+          <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
             <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
               <input
                 type="checkbox"

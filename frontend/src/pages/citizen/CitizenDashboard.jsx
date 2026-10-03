@@ -3,18 +3,16 @@ import { Link, useNavigate } from 'react-router-dom';
 import { grievanceApi } from '../../api/grievances';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import { StatCard } from '../../components/common/StatCard';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { PriorityBadge } from '../../components/common/PriorityBadge';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import {
   FileText,
   Clock,
-  Play,
+  RotateCw,
   CheckCircle2,
   PlusCircle,
   ArrowRight,
-  Inbox,
   Search,
   Droplets,
   Milestone,
@@ -26,82 +24,64 @@ import {
   Bus,
   HelpCircle,
   PhoneCall,
-  ShieldCheck,
   SearchCheck,
+  ShieldCheck,
 } from 'lucide-react';
 
 const CIVIC_SERVICES = [
   {
     name: 'Water Supply',
     icon: Droplets,
-    color: '#0284c7',
-    bg: '#e0f2fe',
-    desc: 'Leakages, low pressure, contaminated water & meter faults',
+    desc: 'Leakages, low pressure, dirty water & meter faults',
     dept: 'Water Department',
   },
   {
     name: 'Roads',
     icon: Milestone,
-    color: '#b45309',
-    bg: '#fef3c7',
-    desc: 'Potholes, damaged pathways, speed breakers & resurfacing',
+    desc: 'Potholes, damaged pathways & missing signs',
     dept: 'Road Department',
   },
   {
     name: 'Garbage',
     icon: Trash2,
-    color: '#059669',
-    bg: '#d1fae5',
-    desc: 'Uncollected waste, overflowing bins & illegal dump yards',
+    desc: 'Uncollected waste & overflowing public bins',
     dept: 'Sanitation Department',
   },
   {
     name: 'Electricity',
     icon: Zap,
-    color: '#d97706',
-    bg: '#fef9c3',
-    desc: 'Power outages, loose cables, spark hazards & transformers',
+    desc: 'Power cuts, loose cables & transformer hazards',
     dept: 'Electricity Department',
   },
   {
     name: 'Street Lights',
     icon: Lightbulb,
-    color: '#ca8a04',
-    bg: '#fef08a',
-    desc: 'Broken lamps, non-functional streetlights & flickering bulbs',
+    desc: 'Dark streets, damaged poles & flickering fixtures',
     dept: 'Electricity Department',
   },
   {
     name: 'Drainage',
     icon: Waves,
-    color: '#0891b2',
-    bg: '#cffafe',
-    desc: 'Blocked gutters, overflowing sewers & monsoon waterlogging',
+    desc: 'Blocked storm drains & sewer waterlogging',
     dept: 'Sanitation Department',
   },
   {
     name: 'Sanitation',
     icon: Sparkles,
-    color: '#16a34a',
-    bg: '#dcfce7',
-    desc: 'Public toilet hygiene, pest control & street disinfection',
+    desc: 'Pest fumigation & public restroom hygiene',
     dept: 'Sanitation Department',
   },
   {
     name: 'Public Transport',
     icon: Bus,
-    color: '#4f46e5',
-    bg: '#e0e7ff',
-    desc: 'Bus delays, route issues, stop shelter damages & transit queries',
+    desc: 'Transit shelters, bus timings & feeder services',
     dept: 'Public Transport Department',
   },
   {
-    name: 'Other',
+    name: 'Other Issues',
     icon: HelpCircle,
-    color: '#7c3aed',
-    bg: '#ede9fe',
-    desc: 'Miscellaneous civic maintenance, permits & community concerns',
-    dept: 'Water Department',
+    desc: 'Municipal queries, noise nuisance & civic matters',
+    dept: 'General Administration',
   },
 ];
 
@@ -109,16 +89,35 @@ export const CitizenDashboard = () => {
   const { user } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
-  const [grievances, setGrievances] = useState([]);
+
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    inProgress: 0,
+    resolved: 0,
+  });
+  const [recentGrievances, setRecentGrievances] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [trackQuery, setTrackQuery] = useState('');
+  const [trackingNumberInput, setTrackingNumberInput] = useState('');
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         const res = await grievanceApi.getMy();
-        if (res.success && res.data) {
-          setGrievances(res.data.grievances || []);
+        if (res.success && res.data?.grievances) {
+          const list = res.data.grievances;
+
+          const total = list.length;
+          const pending = list.filter((g) =>
+            ['SUBMITTED', 'UNDER_REVIEW', 'ASSIGNED'].includes(g.status)
+          ).length;
+          const inProgress = list.filter((g) => g.status === 'IN_PROGRESS').length;
+          const resolved = list.filter((g) =>
+            ['RESOLVED', 'CLOSED'].includes(g.status)
+          ).length;
+
+          setStats({ total, pending, inProgress, resolved });
+          setRecentGrievances(list.slice(0, 5));
         }
       } catch (err) {
         showToast(err.message, 'error');
@@ -130,256 +129,319 @@ export const CitizenDashboard = () => {
     fetchDashboardData();
   }, [showToast]);
 
-  const handleTrackSubmit = (e) => {
+  const handleQuickTrackSubmit = (e) => {
     e.preventDefault();
-    if (!trackQuery.trim()) {
-      showToast('Please enter a tracking number or grievance ID', 'warning');
+    const query = trackingNumberInput.trim();
+    if (!query) {
+      showToast('Please enter a valid tracking number', 'error');
       return;
     }
-    navigate(`/citizen/track?number=${encodeURIComponent(trackQuery.trim())}`);
+    navigate(`/citizen/track?trackingNumber=${encodeURIComponent(query)}`);
+  };
+
+  const handleCivicServiceClick = (service) => {
+    navigate(
+      `/citizen/submit?category=${encodeURIComponent(service.name)}&department=${encodeURIComponent(
+        service.dept
+      )}`
+    );
   };
 
   if (isLoading) {
-    return <LoadingSpinner text="Loading dashboard data..." fullPage={true} />;
+    return <LoadingSpinner text="Loading dashboard data..." fullPage />;
   }
 
-  // Calculate quick stats
-  const totalCount = grievances.length;
-  const pendingCount = grievances.filter((g) => ['SUBMITTED', 'UNDER_REVIEW', 'ASSIGNED'].includes(g.status)).length;
-  const inProgressCount = grievances.filter((g) => g.status === 'IN_PROGRESS').length;
-  const resolvedCount = grievances.filter((g) => ['RESOLVED', 'CLOSED'].includes(g.status)).length;
-
-  const recentGrievances = grievances.slice(0, 5);
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      {/* Welcome Hero Banner */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      {/* Top Welcome & Primary Action Strip */}
       <div
         className="card"
         style={{
-          background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 60%, #4f46e5 100%)',
-          color: '#ffffff',
-          border: 'none',
-          padding: '2.25rem',
+          padding: '1.25rem 1.5rem',
           display: 'flex',
-          flexDirection: 'column',
-          gap: '1.75rem',
-          borderRadius: 'var(--radius-xl)',
-          boxShadow: '0 10px 25px -5px rgba(37, 99, 235, 0.3)',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '1rem',
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
-          <div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'rgba(255,255,255,0.15)', padding: '0.25rem 0.75rem', borderRadius: 'var(--radius-full)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>
-              <ShieldCheck size={14} /> Official Citizen Grievance Portal
-            </div>
-            <h1 style={{ color: '#ffffff', fontSize: '1.875rem', fontWeight: 800 }}>
-              Welcome back, {user?.name || 'Citizen'}!
-            </h1>
-            <p style={{ color: '#bfdbfe', marginTop: '0.375rem', fontSize: '0.9375rem', maxWidth: '620px', lineHeight: 1.5 }}>
-              Lodge complaints, monitor real-time municipal investigations, track resolution progress, and ensure accountability across all civic departments.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link
-              to="/citizen/submit"
-              className="btn btn-lg"
-              style={{ backgroundColor: '#ffffff', color: '#1e40af', fontWeight: 800, boxShadow: '0 4px 14px rgba(0,0,0,0.15)' }}
-            >
-              <PlusCircle size={20} />
-              <span>Lodge New Grievance</span>
-            </Link>
-          </div>
+        <div>
+          <h1 style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-heading)' }}>
+            Welcome, {user?.name || 'Citizen'}
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.84rem', marginTop: '0.15rem' }}>
+            Overview of your reported issues and municipal civic services
+          </p>
         </div>
 
-        {/* Quick Search & Track Bar */}
-        <div
-          style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.12)',
-            backdropFilter: 'blur(8px)',
-            padding: '1rem 1.25rem',
-            borderRadius: 'var(--radius-lg)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-          }}
-        >
-          <form onSubmit={handleTrackSubmit} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ffffff', fontWeight: 700, fontSize: '0.875rem', minWidth: '150px' }}>
-              <SearchCheck size={18} />
-              <span>Quick Track:</span>
-            </div>
-            <div style={{ flex: 1, minWidth: '220px', position: 'relative' }}>
-              <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-              <input
-                type="text"
-                className="form-input"
-                style={{
-                  paddingLeft: '2.4rem',
-                  backgroundColor: '#ffffff',
-                  border: 'none',
-                  fontSize: '0.875rem',
-                }}
-                placeholder="Enter Grievance Tracking Number (e.g. GRV-2026...)"
-                value={trackQuery}
-                onChange={(e) => setTrackQuery(e.target.value)}
-              />
-            </div>
-            <button type="submit" className="btn btn-sm" style={{ backgroundColor: '#10b981', color: '#ffffff', fontWeight: 700 }}>
-              Track Now
-            </button>
-          </form>
-        </div>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-4 lg-grid-cols-2 md-grid-cols-1 gap-4">
-        <StatCard
-          title="Total Submitted"
-          value={totalCount}
-          icon={FileText}
-          color="#2563eb"
-          bg="#eff6ff"
-        />
-        <StatCard
-          title="Pending / Under Review"
-          value={pendingCount}
-          icon={Clock}
-          color="#d97706"
-          bg="#fef3c7"
-        />
-        <StatCard
-          title="In Progress"
-          value={inProgressCount}
-          icon={Play}
-          color="#854d0e"
-          bg="#fef9c3"
-        />
-        <StatCard
-          title="Resolved Grievances"
-          value={resolvedCount}
-          icon={CheckCircle2}
-          color="#059669"
-          bg="#ecfdf5"
-        />
-      </div>
-
-      {/* Quick Civic Services Section */}
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.25rem' }}>
-          <div>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>Civic Services Directory</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '0.2rem' }}>
-              Select a municipal department or service category to file an instant complaint
-            </p>
-          </div>
-          <Link to="/citizen/services" className="btn btn-outline btn-sm">
-            <span>View All Services</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          <Link to="/citizen/submit" className="btn btn-primary">
+            <PlusCircle size={16} />
+            <span>Lodge Grievance</span>
+          </Link>
+          <Link to="/citizen/grievances" className="btn btn-secondary">
+            <span>View All Records</span>
             <ArrowRight size={14} />
           </Link>
         </div>
+      </div>
 
-        <div className="grid grid-cols-3 lg-grid-cols-2 md-grid-cols-1 gap-4">
+      {/* Compact 4-Block Statistics Row */}
+      <div className="stats-grid">
+        <div className="stat-item">
+          <div className="stat-label">
+            <span>Total Lodged</span>
+            <FileText size={15} />
+          </div>
+          <div className="stat-value">{stats.total}</div>
+          <div className="stat-helper">All lifetime submissions</div>
+        </div>
+
+        <div className="stat-item">
+          <div className="stat-label">
+            <span>Pending Review</span>
+            <Clock size={15} color="var(--status-pending-text)" />
+          </div>
+          <div className="stat-value">{stats.pending}</div>
+          <div className="stat-helper">Awaiting officer action</div>
+        </div>
+
+        <div className="stat-item">
+          <div className="stat-label">
+            <span>In Progress</span>
+            <RotateCw size={15} color="var(--status-progress-text)" />
+          </div>
+          <div className="stat-value">{stats.inProgress}</div>
+          <div className="stat-helper">Active on-site resolution</div>
+        </div>
+
+        <div className="stat-item">
+          <div className="stat-label">
+            <span>Resolved</span>
+            <CheckCircle2 size={15} color="var(--status-resolved-text)" />
+          </div>
+          <div className="stat-value">{stats.resolved}</div>
+          <div className="stat-helper">Completed cases</div>
+        </div>
+      </div>
+
+      {/* Quick Track Bar */}
+      <div
+        className="card"
+        style={{
+          padding: '1rem 1.25rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '1rem',
+          backgroundColor: 'var(--bg-subtle)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+          <SearchCheck size={18} color="var(--primary)" />
+          <div>
+            <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-heading)' }}>
+              Quick Grievance Tracker
+            </span>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              Enter your tracking code (e.g. GRV-2026-...) to check real-time progress
+            </p>
+          </div>
+        </div>
+
+        <form
+          onSubmit={handleQuickTrackSubmit}
+          style={{ display: 'flex', gap: '0.4rem', flex: '1', maxWidth: '380px', minWidth: '240px' }}
+        >
+          <input
+            type="text"
+            className="form-input"
+            style={{ padding: '0.45rem 0.75rem', fontSize: '0.84rem' }}
+            placeholder="Enter tracking code..."
+            value={trackingNumberInput}
+            onChange={(e) => setTrackingNumberInput(e.target.value)}
+          />
+          <button type="submit" className="btn btn-primary btn-sm">
+            <Search size={14} />
+            <span>Track</span>
+          </button>
+        </form>
+      </div>
+
+      {/* Civic Services Quick Directory */}
+      <div className="card">
+        <div className="card-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span className="card-title">Civic Services Directory</span>
+            <span className="badge badge-subtle">9 Services</span>
+          </div>
+          <Link to="/citizen/services" className="text-xs text-primary font-semibold flex-center" style={{ gap: '0.25rem' }}>
+            <span>View Full Directory</span>
+            <ArrowRight size={13} />
+          </Link>
+        </div>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+            gap: '1px',
+            backgroundColor: 'var(--border-subtle)',
+          }}
+        >
           {CIVIC_SERVICES.map((srv) => {
             const Icon = srv.icon;
             return (
-              <div key={srv.name} className="service-card">
-                <div>
-                  <div className="service-icon-box" style={{ backgroundColor: srv.bg, color: srv.color }}>
-                    <Icon size={26} />
-                  </div>
-                  <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.25rem' }}>
-                    {srv.name}
-                  </h3>
-                  <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.4, marginBottom: '1rem' }}>
-                    {srv.desc}
-                  </p>
-                </div>
-                <Link
-                  to={`/citizen/submit?category=${encodeURIComponent(srv.name)}&dept=${encodeURIComponent(srv.dept)}`}
-                  className="btn btn-secondary btn-sm"
-                  style={{ width: '100%', justifyContent: 'space-between', fontWeight: 700 }}
+              <div
+                key={srv.name}
+                onClick={() => handleCivicServiceClick(srv)}
+                style={{
+                  backgroundColor: 'var(--bg-surface)',
+                  padding: '1rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  gap: '0.75rem',
+                  transition: 'background-color var(--transition-fast)',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-subtle)')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface)')}
+              >
+                <div
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: 'var(--primary-subtle)',
+                    color: 'var(--primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
                 >
-                  <span>Report Issue</span>
-                  <ArrowRight size={14} />
-                </Link>
+                  <Icon size={16} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-heading)' }}>
+                    {srv.name}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: '0.75rem',
+                      color: 'var(--text-muted)',
+                      marginTop: '0.15rem',
+                      lineHeight: 1.3,
+                    }}
+                  >
+                    {srv.desc}
+                  </div>
+                </div>
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* Recent Grievances Card */}
+      {/* Recent Grievances List / Table */}
       <div className="card">
         <div className="card-header">
-          <div>
-            <h2 className="card-title">Recent Grievances</h2>
-            <p className="card-subtitle">Latest civic issues submitted by your account</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span className="card-title">Recent Grievances</span>
+            {recentGrievances.length > 0 && (
+              <span className="badge badge-subtle">{recentGrievances.length} recent</span>
+            )}
           </div>
-          <Link to="/citizen/grievances" className="btn btn-outline btn-sm">
-            <span>View All ({totalCount})</span>
-            <ArrowRight size={14} />
+          <Link to="/citizen/grievances" className="text-xs text-primary font-semibold flex-center" style={{ gap: '0.25rem' }}>
+            <span>Manage All Grievances</span>
+            <ArrowRight size={13} />
           </Link>
         </div>
 
         {recentGrievances.length === 0 ? (
-          <div className="empty-state">
-            <Inbox size={44} className="empty-state-icon" />
-            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-main)' }}>No Grievances Lodged Yet</h3>
-            <p style={{ marginTop: '0.375rem', marginBottom: '1.25rem', fontSize: '0.875rem' }}>
-              You haven't submitted any civic complaints yet. Choose a civic service above or click below to lodge your first complaint.
+          <div style={{ padding: '2.5rem 1.5rem', textAlign: 'center' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+              You haven't filed any grievances yet.
             </p>
-            <Link to="/citizen/submit" className="btn btn-primary">
-              <PlusCircle size={18} />
-              <span>Submit a Grievance</span>
+            <Link to="/citizen/submit" className="btn btn-primary btn-sm" style={{ marginTop: '0.75rem' }}>
+              <PlusCircle size={14} />
+              <span>Report Your First Grievance</span>
             </Link>
           </div>
         ) : (
-          <div className="table-container">
+          <div className="table-container" style={{ border: 'none', borderRadius: 0 }}>
             <table className="table">
               <thead>
                 <tr>
-                  <th>Tracking #</th>
-                  <th>Title</th>
-                  <th>Department</th>
+                  <th>Tracking Code</th>
+                  <th>Title & Description</th>
+                  <th>Category</th>
                   <th>Priority</th>
                   <th>Status</th>
-                  <th>Date Filed</th>
-                  <th style={{ textAlign: 'right' }}>Action</th>
+                  <th>Submitted</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {recentGrievances.map((g) => (
-                  <tr key={g.id}>
+                {recentGrievances.map((item) => (
+                  <tr key={item.id}>
                     <td>
-                      <Link
-                        to={`/citizen/track?number=${g.grievance_number}`}
-                        style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--primary)' }}
-                        title="Click to track"
+                      <span style={{ fontFamily: 'monospace', fontWeight: 600, fontSize: '0.8125rem' }}>
+                        {item.trackingNumber}
+                      </span>
+                    </td>
+                    <td style={{ maxWidth: '280px' }}>
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          color: 'var(--text-heading)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
                       >
-                        {g.grievance_number}
-                      </Link>
+                        {item.title}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '0.75rem',
+                          color: 'var(--text-muted)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          marginTop: '0.1rem',
+                        }}
+                      >
+                        {item.description}
+                      </div>
                     </td>
                     <td>
-                      <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{g.title}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{g.category_name}</div>
-                    </td>
-                    <td>{g.department_name}</td>
-                    <td>
-                      <PriorityBadge priority={g.priority} />
+                      <span style={{ fontSize: '0.8125rem' }}>{item.category?.name || 'General'}</span>
                     </td>
                     <td>
-                      <StatusBadge status={g.status} />
+                      <PriorityBadge priority={item.priority} />
                     </td>
-                    <td style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                      {new Date(g.created_at).toLocaleDateString()}
+                    <td>
+                      <StatusBadge status={item.status} />
                     </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div className="flex items-center justify-end gap-2">
-                        <Link to={`/citizen/track?number=${g.grievance_number}`} className="btn btn-outline btn-sm" title="Track timeline">
-                          <span>Track</span>
+                    <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                      {new Date(item.createdAt).toLocaleDateString()}
+                    </td>
+                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'inline-flex', gap: '0.4rem' }}>
+                        <Link
+                          to={`/citizen/track?trackingNumber=${encodeURIComponent(item.trackingNumber)}`}
+                          className="btn btn-secondary btn-sm"
+                          style={{ padding: '0.25rem 0.55rem', fontSize: '0.75rem' }}
+                        >
+                          Track
                         </Link>
-                        <Link to={`/grievances/${g.id}`} className="btn btn-secondary btn-sm">
-                          <span>Details</span>
-                          <ArrowRight size={14} />
+                        <Link
+                          to={`/grievances/${item.id}`}
+                          className="btn btn-outline btn-sm"
+                          style={{ padding: '0.25rem 0.55rem', fontSize: '0.75rem' }}
+                        >
+                          Details
                         </Link>
                       </div>
                     </td>
@@ -391,49 +453,31 @@ export const CitizenDashboard = () => {
         )}
       </div>
 
-      {/* Support & Helpline Banner */}
+      {/* Bottom Civic Support Notice */}
       <div
         className="card"
         style={{
-          backgroundColor: '#f8fafc',
-          border: '1.5px dashed var(--border-color)',
-          padding: '1.5rem',
+          padding: '0.875rem 1.25rem',
           display: 'flex',
-          justifyContent: 'space-between',
           alignItems: 'center',
+          justifyContent: 'space-between',
           flexWrap: 'wrap',
-          gap: '1rem',
+          gap: '0.75rem',
+          backgroundColor: 'var(--bg-subtle)',
         }}
       >
-        <div className="flex items-center gap-3">
-          <div
-            style={{
-              width: '46px',
-              height: '46px',
-              borderRadius: 'var(--radius-md)',
-              backgroundColor: '#eff6ff',
-              color: 'var(--primary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <PhoneCall size={22} />
-          </div>
-          <div>
-            <h3 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-main)' }}>
-              24x7 Municipal Citizen Helpline: 1800-11-2026
-            </h3>
-            <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              For emergency power failures, hazardous water pipe bursts, or immediate civic assistance.
-            </p>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          <ShieldCheck size={16} color="var(--primary)" />
+          <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+            All grievances are tracked under the <strong style={{ color: 'var(--text-main)' }}>Public Service Guarantee Charter</strong> with guaranteed resolution SLAs.
+          </span>
         </div>
-
-        <Link to="/citizen/help" className="btn btn-outline btn-sm">
-          <span>Help & FAQs</span>
-          <ArrowRight size={14} />
-        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <PhoneCall size={14} color="var(--text-muted)" />
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            Support: <strong>1800-345-0011</strong> (Toll Free)
+          </span>
+        </div>
       </div>
     </div>
   );

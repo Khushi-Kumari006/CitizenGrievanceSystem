@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { officerApi } from '../../api/officer';
 import { grievanceApi } from '../../api/grievances';
@@ -7,7 +7,7 @@ import { StatusBadge } from '../../components/common/StatusBadge';
 import { PriorityBadge } from '../../components/common/PriorityBadge';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { Modal } from '../../components/common/Modal';
-import { Search, Filter, RefreshCw, ArrowRight, ClipboardList, RotateCcw } from 'lucide-react';
+import { Search, RefreshCw, ArrowRight, ClipboardList, RotateCcw } from 'lucide-react';
 
 export const OfficerGrievancesPage = () => {
   const [grievances, setGrievances] = useState([]);
@@ -24,7 +24,7 @@ export const OfficerGrievancesPage = () => {
 
   const { showToast } = useToast();
 
-  const fetchGrievances = async () => {
+  const fetchGrievances = useCallback(async () => {
     setIsLoading(true);
     try {
       const res = await officerApi.getAssignedGrievances();
@@ -36,11 +36,11 @@ export const OfficerGrievancesPage = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [showToast]);
 
   useEffect(() => {
     fetchGrievances();
-  }, []);
+  }, [fetchGrievances]);
 
   const filteredGrievances = useMemo(() => {
     return grievances.filter((g) => {

@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { grievanceApi } from '../../api/grievances';
 import { useToast } from '../../context/ToastContext';
-import { StatusBadge } from '../../components/common/StatusBadge';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import {
   deriveNotificationsFromGrievances,
@@ -14,17 +13,15 @@ import {
   Clock,
   ShieldCheck,
   ArrowRight,
-  Inbox,
+  Bell,
   CheckCheck,
-  Star,
-  SearchCheck,
 } from 'lucide-react';
 
 export const NotificationsPage = () => {
   const [grievances, setGrievances] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('ALL'); // ALL, UNREAD, STATUS, ASSIGNMENT, RESOLUTION
+  const [activeTab, setActiveTab] = useState('ALL'); // ALL, UNREAD, ASSIGNMENT, STATUS, RESOLUTION
   const { showToast } = useToast();
   const navigate = useNavigate();
 
@@ -46,6 +43,9 @@ export const NotificationsPage = () => {
 
   useEffect(() => {
     fetchGrievancesAndNotifications();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
     const handleUpdate = () => {
       const derived = deriveNotificationsFromGrievances(grievances);
       setNotifications(derived);
@@ -78,188 +78,168 @@ export const NotificationsPage = () => {
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '1000px', margin: '0 auto' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '880px', margin: '0 auto' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div>
-          <div className="flex items-center gap-2">
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)' }}>Notifications & Updates</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <h1 style={{ fontSize: '1.45rem', fontWeight: 700, color: 'var(--text-heading)' }}>
+              Notification Center
+            </h1>
             {unreadCount > 0 && (
-              <span className="badge badge-submitted" style={{ fontSize: '0.75rem' }}>
-                {unreadCount} Unread
-              </span>
+              <span className="badge badge-pending">{unreadCount} unread</span>
             )}
           </div>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-            Chronological alerts on status changes, officer assignments, and resolution milestones
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.84rem', marginTop: '0.15rem' }}>
+            Official alerts, inspection updates, and departmental resolutions
           </p>
         </div>
 
         {unreadCount > 0 && (
-          <button onClick={handleMarkAllRead} className="btn btn-outline btn-sm">
-            <CheckCheck size={16} />
+          <button onClick={handleMarkAllRead} className="btn btn-secondary btn-sm">
+            <CheckCheck size={14} />
             <span>Mark All as Read</span>
           </button>
         )}
       </div>
 
-      {/* Tabs Filter Bar */}
-      <div className="filter-chip-group">
-        <button
-          className={`filter-chip ${activeTab === 'ALL' ? 'active' : ''}`}
-          onClick={() => setActiveTab('ALL')}
-        >
-          <span>All Notifications ({notifications.length})</span>
-        </button>
-        <button
-          className={`filter-chip ${activeTab === 'UNREAD' ? 'active' : ''}`}
-          onClick={() => setActiveTab('UNREAD')}
-        >
-          <span>Unread ({unreadCount})</span>
-        </button>
-        <button
-          className={`filter-chip ${activeTab === 'ASSIGNMENT' ? 'active' : ''}`}
-          onClick={() => setActiveTab('ASSIGNMENT')}
-        >
-          <ShieldCheck size={14} />
-          <span>Officer Assignments</span>
-        </button>
-        <button
-          className={`filter-chip ${activeTab === 'STATUS' ? 'active' : ''}`}
-          onClick={() => setActiveTab('STATUS')}
-        >
-          <Clock size={14} />
-          <span>Status Updates</span>
-        </button>
-        <button
-          className={`filter-chip ${activeTab === 'RESOLUTION' ? 'active' : ''}`}
-          onClick={() => setActiveTab('RESOLUTION')}
-        >
-          <CheckCircle2 size={14} />
-          <span>Resolutions</span>
-        </button>
+      {/* Filter Tabs */}
+      <div className="card" style={{ padding: '0.5rem' }}>
+        <div className="filter-chip-group" style={{ width: '100%', overflowX: 'auto' }}>
+          <button
+            className={`filter-chip ${activeTab === 'ALL' ? 'active' : ''}`}
+            onClick={() => setActiveTab('ALL')}
+          >
+            <span>All Updates ({notifications.length})</span>
+          </button>
+          <button
+            className={`filter-chip ${activeTab === 'UNREAD' ? 'active' : ''}`}
+            onClick={() => setActiveTab('UNREAD')}
+          >
+            <span>Unread ({unreadCount})</span>
+          </button>
+          <button
+            className={`filter-chip ${activeTab === 'ASSIGNMENT' ? 'active' : ''}`}
+            onClick={() => setActiveTab('ASSIGNMENT')}
+          >
+            <span>Officer Assignments</span>
+          </button>
+          <button
+            className={`filter-chip ${activeTab === 'STATUS' ? 'active' : ''}`}
+            onClick={() => setActiveTab('STATUS')}
+          >
+            <span>Status Changes</span>
+          </button>
+          <button
+            className={`filter-chip ${activeTab === 'RESOLUTION' ? 'active' : ''}`}
+            onClick={() => setActiveTab('RESOLUTION')}
+          >
+            <span>Resolutions</span>
+          </button>
+        </div>
       </div>
 
-      {/* Notifications List Feed */}
-      {isLoading ? (
-        <LoadingSpinner text="Fetching notifications feed..." fullPage={true} />
-      ) : filteredNotifications.length === 0 ? (
-        <div className="card empty-state">
-          <Inbox size={48} className="empty-state-icon" />
-          <h3 style={{ fontSize: '1.125rem', fontWeight: 700 }}>No Notifications</h3>
-          <p style={{ marginTop: '0.375rem', fontSize: '0.875rem' }}>
-            {activeTab === 'UNREAD'
-              ? 'You have caught up with all updates! No unread notifications.'
-              : 'There are no notifications matching the selected category.'}
-          </p>
+      {/* Notifications List */}
+      <div className="card">
+        <div className="card-header">
+          <span className="card-title">Activity Feed</span>
+          <span className="badge badge-subtle">{filteredNotifications.length} items</span>
         </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
-          {filteredNotifications.map((notif) => (
+
+        {isLoading ? (
+          <LoadingSpinner text="Loading notifications..." />
+        ) : filteredNotifications.length === 0 ? (
+          <div style={{ padding: '3rem 1.5rem', textAlign: 'center' }}>
             <div
-              key={notif.id}
-              className="card"
               style={{
-                padding: '1.25rem 1.5rem',
-                borderLeft: !notif.isRead ? '4px solid var(--primary)' : '1px solid var(--border-color)',
-                backgroundColor: !notif.isRead ? '#f8faff' : '#ffffff',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
+                width: '40px',
+                height: '40px',
+                borderRadius: 'var(--radius-sm)',
+                backgroundColor: 'var(--bg-subtle)',
+                color: 'var(--text-muted)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '0.75rem',
               }}
-              onClick={() => handleItemClick(notif)}
             >
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', gap: '1rem', flex: 1 }}>
-                  <div
-                    style={{
-                      width: '42px',
-                      height: '42px',
-                      borderRadius: 'var(--radius-md)',
-                      backgroundColor:
-                        notif.type === 'RESOLUTION'
-                          ? '#dcfce7'
-                          : notif.type === 'ASSIGNMENT'
-                          ? '#e0e7ff'
-                          : '#fef3c7',
-                      color:
-                        notif.type === 'RESOLUTION'
-                          ? '#166534'
-                          : notif.type === 'ASSIGNMENT'
-                          ? '#4338ca'
-                          : '#92400e',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                    }}
-                  >
-                    {notif.type === 'RESOLUTION' ? (
-                      <CheckCircle2 size={20} />
-                    ) : notif.type === 'ASSIGNMENT' ? (
-                      <ShieldCheck size={20} />
+              <Bell size={20} />
+            </div>
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-heading)' }}>
+              No notifications in this view
+            </h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', marginTop: '0.25rem' }}>
+              {activeTab === 'UNREAD'
+                ? 'All caught up! You have no unread notifications.'
+                : 'No activities logged under this category yet.'}
+            </p>
+          </div>
+        ) : (
+          <div>
+            {filteredNotifications.map((item, idx) => (
+              <div
+                key={item.id}
+                onClick={() => handleItemClick(item)}
+                style={{
+                  padding: '1rem 1.25rem',
+                  borderBottom:
+                    idx < filteredNotifications.length - 1 ? '1px solid var(--border-subtle)' : 'none',
+                  backgroundColor: item.isRead ? 'transparent' : 'var(--bg-subtle)',
+                  borderLeft: item.isRead ? '3px solid transparent' : '3px solid var(--primary)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  gap: '1rem',
+                  transition: 'background-color var(--transition-fast)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--bg-muted)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = item.isRead ? 'transparent' : 'var(--bg-subtle)';
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', flex: 1 }}>
+                  <div style={{ marginTop: '2px', flexShrink: 0 }}>
+                    {item.type === 'RESOLUTION' ? (
+                      <CheckCircle2 size={18} color="var(--status-resolved-text)" />
+                    ) : item.type === 'ASSIGNMENT' ? (
+                      <ShieldCheck size={18} color="var(--primary)" />
                     ) : (
-                      <Clock size={20} />
+                      <Clock size={18} color="var(--status-pending-text)" />
                     )}
                   </div>
 
                   <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
-                      <span style={{ fontWeight: 800, fontSize: '0.9375rem', color: 'var(--text-main)' }}>
-                        {notif.title}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-heading)' }}>
+                        {item.title}
                       </span>
-                      <span style={{ fontFamily: 'monospace', fontSize: '0.8125rem', fontWeight: 700, color: 'var(--primary)' }}>
-                        {notif.grievanceNumber}
-                      </span>
-                      <StatusBadge status={notif.status} />
-                    </div>
-
-                    <p style={{ fontSize: '0.875rem', color: 'var(--text-main)', lineHeight: 1.5, marginBottom: '0.5rem' }}>
-                      {notif.message}
-                    </p>
-
-                    <div className="flex items-center gap-3" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      <span>Dept: <strong>{notif.department}</strong></span>
-                      <span>•</span>
-                      <span>{new Date(notif.timestamp).toLocaleString()}</span>
-                      {!notif.isRead && (
-                        <>
-                          <span>•</span>
-                          <span style={{ color: 'var(--primary)', fontWeight: 700 }}>New update</span>
-                        </>
+                      {!item.isRead && (
+                        <span className="badge badge-pending" style={{ fontSize: '0.65rem' }}>
+                          New
+                        </span>
                       )}
+                    </div>
+                    <p style={{ fontSize: '0.8125rem', color: 'var(--text-main)', marginTop: '0.2rem', lineHeight: 1.4 }}>
+                      {item.message}
+                    </p>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+                      {new Date(item.timestamp).toLocaleString()}
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                  <Link
-                    to={`/citizen/track?number=${notif.grievanceNumber}`}
-                    className="btn btn-outline btn-sm"
-                    title="Track progress"
-                  >
-                    <SearchCheck size={14} />
-                    <span>Track</span>
-                  </Link>
-                  {notif.canFeedback && (
-                    <Link
-                      to={`/citizen/feedback?id=${notif.grievanceId}`}
-                      className="btn btn-sm"
-                      style={{ backgroundColor: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }}
-                    >
-                      <Star size={14} />
-                      <span>Feedback</span>
-                    </Link>
-                  )}
-                  <Link to={`/grievances/${notif.grievanceId}`} className="btn btn-secondary btn-sm">
-                    <span>View</span>
-                    <ArrowRight size={14} />
-                  </Link>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--primary)', flexShrink: 0, marginTop: '2px' }}>
+                  <span className="text-xs font-semibold">View Case</span>
+                  <ArrowRight size={13} />
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

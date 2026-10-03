@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import { Shield, User, Mail, Lock, Phone, UserPlus, ArrowLeft } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
+import { Landmark, User, Mail, Lock, Phone, UserPlus, ArrowLeft, Eye, EyeOff, Sun, Moon } from 'lucide-react';
 
 export const RegisterPage = () => {
   const [formData, setFormData] = useState({
@@ -12,11 +13,13 @@ export const RegisterPage = () => {
     password: '',
     confirmPassword: '',
   });
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
   const { register } = useAuth();
   const { showToast } = useToast();
+  const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const validate = () => {
@@ -75,178 +78,277 @@ export const RegisterPage = () => {
       style={{
         minHeight: '100vh',
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#f1f5f9',
-        padding: '1.5rem',
+        backgroundColor: 'var(--bg-page)',
+        padding: '2rem 1.25rem',
+        position: 'relative',
       }}
     >
+      {/* Top right theme toggle */}
+      <div style={{ position: 'absolute', top: '1.25rem', right: '1.5rem' }}>
+        <button
+          onClick={toggleTheme}
+          className="theme-toggle-btn"
+          title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          aria-label="Toggle theme"
+        >
+          {isDark ? <Sun size={17} /> : <Moon size={17} />}
+        </button>
+      </div>
+
       <div
         className="card"
         style={{
           width: '100%',
           maxWidth: '480px',
-          boxShadow: 'var(--shadow-xl)',
-          padding: '2.5rem 2rem',
-          borderRadius: 'var(--radius-xl)',
+          padding: '2.25rem 2rem',
         }}
       >
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
           <div
             style={{
-              width: '56px',
-              height: '56px',
-              borderRadius: '14px',
-              background: 'linear-gradient(135deg, #2563eb, #6366f1)',
+              width: '46px',
+              height: '46px',
+              borderRadius: 'var(--radius-sm)',
+              backgroundColor: 'var(--primary)',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#ffffff',
+              color: 'var(--primary-text)',
               marginBottom: '1rem',
-              boxShadow: '0 8px 16px var(--primary-glow)',
             }}
           >
-            <Shield size={30} />
+            <Landmark size={24} />
           </div>
-          <h2 style={{ fontSize: '1.625rem', fontWeight: 800 }}>Create Citizen Account</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '0.375rem' }}>
-            Register to lodge civic complaints and track resolution status in real-time
+          <h1
+            style={{
+              fontSize: '1.4rem',
+              fontWeight: 700,
+              color: 'var(--text-heading)',
+              letterSpacing: '-0.02em',
+            }}
+          >
+            Create Citizen Account
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.84rem', marginTop: '0.25rem' }}>
+            Register to lodge grievances and track municipal resolutions
           </p>
         </div>
 
-        {/* Form */}
+        {/* Register Form */}
         <form onSubmit={handleSubmit}>
+          {/* Full Name */}
           <div className="form-group">
-            <label className="form-label">
-              Full Name <span className="required">*</span>
+            <label className="form-label" htmlFor="register-name">
+              <span>Full Name</span>
+              <span className="form-label-required">*</span>
             </label>
             <div style={{ position: 'relative' }}>
-              <User
-                size={18}
-                style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }}
-              />
               <input
-                type="text"
+                id="register-name"
                 name="name"
-                className={`form-input ${errors.name ? 'error' : ''}`}
-                style={{ paddingLeft: '2.5rem' }}
-                placeholder="e.g. Priya Sharma"
+                type="text"
+                className="form-input"
+                style={{ paddingLeft: '2.4rem' }}
+                placeholder="Khushi Kumari"
                 value={formData.name}
                 onChange={handleChange}
-                disabled={isLoading}
+              />
+              <User
+                size={16}
+                color="var(--text-placeholder)"
+                style={{
+                  position: 'absolute',
+                  left: '0.8rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                }}
               />
             </div>
-            {errors.name && <div className="form-error">{errors.name}</div>}
+            {errors.name && <span className="form-error">{errors.name}</span>}
           </div>
 
+          {/* Email Address */}
           <div className="form-group">
-            <label className="form-label">
-              Email Address <span className="required">*</span>
+            <label className="form-label" htmlFor="register-email">
+              <span>Email Address</span>
+              <span className="form-label-required">*</span>
             </label>
             <div style={{ position: 'relative' }}>
-              <Mail
-                size={18}
-                style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }}
-              />
               <input
-                type="email"
+                id="register-email"
                 name="email"
-                className={`form-input ${errors.email ? 'error' : ''}`}
-                style={{ paddingLeft: '2.5rem' }}
-                placeholder="name@example.com"
+                type="email"
+                className="form-input"
+                style={{ paddingLeft: '2.4rem' }}
+                placeholder="citizen@example.com"
                 value={formData.email}
                 onChange={handleChange}
-                disabled={isLoading}
+                autoComplete="email"
+              />
+              <Mail
+                size={16}
+                color="var(--text-placeholder)"
+                style={{
+                  position: 'absolute',
+                  left: '0.8rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                }}
               />
             </div>
-            {errors.email && <div className="form-error">{errors.email}</div>}
+            {errors.email && <span className="form-error">{errors.email}</span>}
           </div>
 
+          {/* Phone Number */}
           <div className="form-group">
-            <label className="form-label">Phone Number (Optional)</label>
+            <label className="form-label" htmlFor="register-phone">
+              <span>Phone Number</span>
+              <span className="text-xs text-muted" style={{ fontWeight: 400 }}>(Optional)</span>
+            </label>
             <div style={{ position: 'relative' }}>
-              <Phone
-                size={18}
-                style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }}
-              />
               <input
-                type="tel"
+                id="register-phone"
                 name="phone"
+                type="tel"
                 className="form-input"
-                style={{ paddingLeft: '2.5rem' }}
-                placeholder="9876543210"
+                style={{ paddingLeft: '2.4rem' }}
+                placeholder="+91 98765 43210"
                 value={formData.phone}
                 onChange={handleChange}
-                disabled={isLoading}
+                autoComplete="tel"
+              />
+              <Phone
+                size={16}
+                color="var(--text-placeholder)"
+                style={{
+                  position: 'absolute',
+                  left: '0.8rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                }}
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          {/* Password & Confirm Password Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '0.75rem' }}>
             <div className="form-group">
-              <label className="form-label">
-                Password <span className="required">*</span>
+              <label className="form-label" htmlFor="register-password">
+                <span>Password</span>
+                <span className="form-label-required">*</span>
               </label>
               <div style={{ position: 'relative' }}>
-                <Lock
-                  size={18}
-                  style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }}
-                />
                 <input
-                  type="password"
+                  id="register-password"
                   name="password"
-                  className={`form-input ${errors.password ? 'error' : ''}`}
-                  style={{ paddingLeft: '2.5rem' }}
+                  type={showPassword ? 'text' : 'password'}
+                  className="form-input"
+                  style={{ paddingLeft: '2.4rem' }}
                   placeholder="Min 6 chars"
                   value={formData.password}
                   onChange={handleChange}
-                  disabled={isLoading}
+                  autoComplete="new-password"
+                />
+                <Lock
+                  size={16}
+                  color="var(--text-placeholder)"
+                  style={{
+                    position: 'absolute',
+                    left: '0.8rem',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                  }}
                 />
               </div>
-              {errors.password && <div className="form-error">{errors.password}</div>}
+              {errors.password && <span className="form-error">{errors.password}</span>}
             </div>
 
             <div className="form-group">
-              <label className="form-label">
-                Confirm Password <span className="required">*</span>
+              <label className="form-label" htmlFor="register-confirm">
+                <span>Confirm</span>
+                <span className="form-label-required">*</span>
               </label>
               <div style={{ position: 'relative' }}>
-                <Lock
-                  size={18}
-                  style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }}
-                />
                 <input
-                  type="password"
+                  id="register-confirm"
                   name="confirmPassword"
-                  className={`form-input ${errors.confirmPassword ? 'error' : ''}`}
-                  style={{ paddingLeft: '2.5rem' }}
-                  placeholder="Repeat password"
+                  type={showPassword ? 'text' : 'password'}
+                  className="form-input"
+                  style={{ paddingLeft: '2.4rem' }}
+                  placeholder="Re-enter password"
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  disabled={isLoading}
+                  autoComplete="new-password"
+                />
+                <Lock
+                  size={16}
+                  color="var(--text-placeholder)"
+                  style={{
+                    position: 'absolute',
+                    left: '0.8rem',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                  }}
                 />
               </div>
-              {errors.confirmPassword && <div className="form-error">{errors.confirmPassword}</div>}
+              {errors.confirmPassword && (
+                <span className="form-error">{errors.confirmPassword}</span>
+              )}
             </div>
           </div>
 
+          {/* Password Toggle */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="text-xs text-muted"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}
+            >
+              {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+              <span>{showPassword ? 'Hide Passwords' : 'Show Passwords'}</span>
+            </button>
+          </div>
+
+          {/* Submit Button */}
           <button
             type="submit"
-            className="btn btn-primary btn-lg"
-            style={{ width: '100%', marginTop: '0.75rem' }}
+            className="btn btn-primary"
+            style={{ width: '100%' }}
             disabled={isLoading}
           >
-            <UserPlus size={18} />
-            <span>{isLoading ? 'Creating Account...' : 'Register Account'}</span>
+            {isLoading ? (
+              <span>Creating Account...</span>
+            ) : (
+              <>
+                <UserPlus size={16} />
+                <span>Complete Registration</span>
+              </>
+            )}
           </button>
         </form>
 
-        {/* Footer */}
-        <div style={{ textAlign: 'center', marginTop: '1.75rem', paddingTop: '1.25rem', borderTop: '1px solid var(--border-color)', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+        <div className="divider" />
+
+        {/* Back to Login */}
+        <div style={{ textAlign: 'center', fontSize: '0.84rem', color: 'var(--text-muted)' }}>
           Already have an account?{' '}
-          <Link to="/login" style={{ fontWeight: 700, color: 'var(--primary)' }}>
-            Sign In Instead <ArrowLeft size={14} style={{ display: 'inline', verticalAlign: 'middle' }} />
+          <Link
+            to="/login"
+            style={{
+              color: 'var(--primary)',
+              fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.2rem',
+            }}
+          >
+            <ArrowLeft size={13} />
+            <span>Sign In</span>
           </Link>
         </div>
       </div>

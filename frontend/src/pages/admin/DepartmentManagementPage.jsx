@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { departmentApi } from '../../api/departments';
 import { useToast } from '../../context/ToastContext';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { Modal } from '../../components/common/Modal';
-import { Building2, PlusCircle, Edit2, CheckCircle2, XCircle, Search } from 'lucide-react';
+import { Building2, PlusCircle, Edit2, Search } from 'lucide-react';
 
 export const DepartmentManagementPage = () => {
   const [departments, setDepartments] = useState([]);
@@ -23,7 +23,7 @@ export const DepartmentManagementPage = () => {
 
   const { showToast } = useToast();
 
-  const fetchDepartments = async () => {
+  const fetchDepartments = useCallback(async () => {
     try {
       const res = await departmentApi.getAll();
       if (res.success && res.data) {
@@ -34,11 +34,11 @@ export const DepartmentManagementPage = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [showToast]);
 
   useEffect(() => {
     fetchDepartments();
-  }, []);
+  }, [fetchDepartments]);
 
   const filteredDepartments = departments.filter(
     (d) =>
@@ -283,7 +283,7 @@ export const DepartmentManagementPage = () => {
             />
           </div>
 
-          <div className="form-group">
+          <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
             <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
               <input
                 type="checkbox"

@@ -1,19 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, Link, useNavigate } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { grievanceApi } from '../../api/grievances';
 import { commentApi } from '../../api/comments';
 import { useToast } from '../../context/ToastContext';
 import { StatusBadge } from '../../components/common/StatusBadge';
-import { PriorityBadge } from '../../components/common/PriorityBadge';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import {
   Star,
   CheckCircle2,
-  MessageSquareHeart,
   Send,
   Building2,
   Calendar,
-  Sparkles,
   Inbox,
   ArrowRight,
   ShieldCheck,
@@ -47,7 +44,7 @@ const saveFeedbackRecord = (grievanceId, feedback) => {
 
 export const FeedbackPage = () => {
   const [searchParams] = useSearchParams();
-  const selectedIdFromUrl = searchParams.get('id');
+  const selectedIdFromUrl = searchParams.get('id') || searchParams.get('grievanceId');
 
   const [resolvedGrievances, setResolvedGrievances] = useState([]);
   const [selectedGrievanceId, setSelectedGrievanceId] = useState(selectedIdFromUrl || '');
@@ -64,7 +61,6 @@ export const FeedbackPage = () => {
   const [feedbackStore, setFeedbackStore] = useState({});
 
   const { showToast } = useToast();
-  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchResolved = async () => {
@@ -101,301 +97,338 @@ export const FeedbackPage = () => {
 
     setIsSubmitting(true);
     try {
-      const ratingLabel = RATING_LABELS[rating] || `${rating}/5 Stars`;
-      const feedbackMessage = `⭐ Citizen Feedback (${rating}/5 Stars)\n` +
-        `Rating: ${ratingLabel}\n` +
-        `Quality of resolution: ${satisfactionAspects.quality ? 'Satisfactory' : 'Needs improvement'}\n` +
-        `Resolution speed: ${satisfactionAspects.timeliness ? 'On time' : 'Delayed'}\n` +
-        `Remarks: ${remarks.trim()}`;
+      const feedbackComment = `[CITIZEN SATISFACTION RATING: ${rating}/5 STARS] - ${RATING_LABELS[rating]}\nCriteria Satisfied: ${
+        Object.entries(satisfactionAspects)
+          .filter(([, v]) => v)
+          .map(([k]) => k.toUpperCase())
+          .join(', ') || 'NONE'
+      }\nCitizen Remarks: ${remarks.trim()}`;
 
-      // Permanently record feedback in the grievance's comment discussion thread
-      await commentApi.addComment(activeGrievance.id, { message: feedbackMessage });
+      await commentApi.create(activeGrievance.id, feedbackComment);
 
-      // Save locally
-      const feedbackData = {
+      const record = {
         rating,
-        ratingLabel,
+        label: RATING_LABELS[rating],
+        aspects: satisfactionAspects,
         remarks: remarks.trim(),
         submittedAt: new Date().toISOString(),
       };
-      saveFeedbackRecord(activeGrievance.id, feedbackData);
-      setFeedbackStore(getFeedbackStore());
 
-      showToast('Thank you! Your feedback has been submitted successfully.', 'success');
+      saveFeedbackRecord(activeGrievance.id, record);
+      setFeedbackStore((prev) => ({ ...prev, [activeGrievance.id]: record }));
+
+      showToast('Thank you! Your feedback has been recorded.', 'success');
       setRemarks('');
     } catch (err) {
-      showToast(err.message || 'Failed to submit feedback', 'error');
+      showToast(err.message, 'error');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   if (isLoading) {
-    return <LoadingSpinner text="Loading resolved grievances..." fullPage={true} />;
+    return <LoadingSpinner text="Loading resolved cases for feedback..." fullPage />;
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', maxWidth: '1000px', margin: '0 auto' }}>
-      {/* Header */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '880px', margin: '0 auto' }}>
+      {/* Page Header */}
       <div>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)' }}>Citizen Resolution Feedback</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-          Rate the timeliness and quality of municipal grievance redressal to help maintain public service excellence
+        <h1 style={{ fontSize: '1.45rem', fontWeight: 700, color: 'var(--text-heading)' }}>
+          Citizen Service Rating & Feedback
+        </h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.84rem', marginTop: '0.15rem' }}>
+          Evaluate the quality and speed of municipal grievance resolutions to help improve civic services
         </p>
       </div>
 
       {resolvedGrievances.length === 0 ? (
-        <div className="card empty-state">
-          <Inbox size={48} className="empty-state-icon" />
-          <h3 style={{ fontSize: '1.125rem', fontWeight: 700 }}>No Resolved Grievances Yet</h3>
-          <p style={{ marginTop: '0.375rem', marginBottom: '1.25rem', fontSize: '0.875rem' }}>
-            Feedback can only be provided for grievances that have been marked as RESOLVED or CLOSED by municipal authorities.
+        <div className="card" style={{ padding: '3rem 1.5rem', textAlign: 'center' }}>
+          <div
+            style={{
+              width: '44px',
+              height: '44px',
+              borderRadius: 'var(--radius-sm)',
+              backgroundColor: 'var(--bg-subtle)',
+              color: 'var(--text-muted)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '0.75rem',
+            }}
+          >
+            <Inbox size={22} />
+          </div>
+          <h3 style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-heading)' }}>
+            No Resolved Grievances Available
+          </h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.84rem', marginTop: '0.35rem', maxWidth: '440px', margin: '0.35rem auto 1.25rem auto' }}>
+            Feedback is enabled for complaints that have been marked as <strong>RESOLVED</strong> or <strong>CLOSED</strong> by municipal officers.
           </p>
-          <Link to="/citizen/grievances" className="btn btn-primary">
-            <span>View My Grievances</span>
-            <ArrowRight size={16} />
+          <Link to="/citizen/grievances" className="btn btn-secondary btn-sm">
+            <span>View Active Grievances</span>
+            <ArrowRight size={13} />
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-3 lg-grid-cols-1 gap-6">
-          {/* Left Column: Select Resolved Grievance */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>
-              Select Resolved Grievance ({resolvedGrievances.length})
-            </h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* Select Grievance to Rate */}
+          <div className="card">
+            <div className="card-header">
+              <span className="card-title">Select Resolved Case to Review</span>
+              <span className="badge badge-resolved">{resolvedGrievances.length} cases</span>
+            </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {resolvedGrievances.map((g) => {
-                const hasProvided = Boolean(feedbackStore[g.id]);
-                const isSelected = String(g.id) === String(selectedGrievanceId);
+            <div className="card-body">
+              <label className="form-label" htmlFor="select-resolved-grv">
+                <span>Choose Grievance</span>
+              </label>
+              <select
+                id="select-resolved-grv"
+                className="form-select"
+                value={selectedGrievanceId}
+                onChange={(e) => setSelectedGrievanceId(e.target.value)}
+              >
+                {resolvedGrievances.map((grv) => (
+                  <option key={grv.id} value={grv.id}>
+                    [{grv.trackingNumber}] {grv.title} — {grv.department?.name || 'Department'}
+                  </option>
+                ))}
+              </select>
 
-                return (
-                  <div
-                    key={g.id}
-                    onClick={() => setSelectedGrievanceId(String(g.id))}
-                    className="card"
-                    style={{
-                      padding: '1rem',
-                      cursor: 'pointer',
-                      border: isSelected ? '2px solid var(--primary)' : '1px solid var(--border-color)',
-                      backgroundColor: isSelected ? '#eff6ff' : '#ffffff',
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.375rem' }}>
-                      <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.8125rem', color: 'var(--primary)' }}>
-                        {g.grievance_number}
+              {activeGrievance && (
+                <div
+                  style={{
+                    marginTop: '1rem',
+                    padding: '0.85rem 1rem',
+                    backgroundColor: 'var(--bg-subtle)',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--border-subtle)',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-heading)' }}>
+                      {activeGrievance.title}
+                    </div>
+                    <div className="text-xs text-muted" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.2rem' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <Building2 size={12} /> {activeGrievance.department?.name || 'Department'}
                       </span>
-                      {hasProvided ? (
-                        <span className="badge badge-resolved" style={{ fontSize: '0.65rem' }}>
-                          Feedback Sent
-                        </span>
-                      ) : (
-                        <span className="badge badge-under_review" style={{ fontSize: '0.65rem' }}>
-                          Pending Feedback
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-main)' }}>
-                      {g.title}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                      {g.department_name} • {new Date(g.resolved_at || g.updated_at).toLocaleDateString()}
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <Calendar size={12} /> Resolved on {new Date(activeGrievance.updatedAt || activeGrievance.createdAt).toLocaleDateString()}
+                      </span>
                     </div>
                   </div>
-                );
-              })}
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <StatusBadge status={activeGrievance.status} />
+                    <Link to={`/grievances/${activeGrievance.id}`} className="btn btn-outline btn-sm">
+                      Details
+                    </Link>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Right Column: Feedback Submission Form / Display */}
-          <div className="card" style={{ gridColumn: 'span 2', padding: '1.75rem' }}>
-            {activeGrievance ? (
-              <div>
-                {/* Grievance Summary Header */}
-                <div style={{ paddingBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', marginBottom: '1.5rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <div>
-                      <span style={{ fontFamily: 'monospace', fontWeight: 800, color: 'var(--primary)' }}>
-                        {activeGrievance.grievance_number}
-                      </span>
-                      <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', marginTop: '0.2rem' }}>
-                        {activeGrievance.title}
-                      </h2>
-                    </div>
-                    <StatusBadge status={activeGrievance.status} />
+          {/* Existing Feedback Notice if already submitted */}
+          {existingFeedback && (
+            <div
+              className="card"
+              style={{
+                backgroundColor: 'var(--primary-subtle)',
+                borderColor: 'var(--primary-border)',
+                padding: '1.25rem',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                <CheckCircle2 size={18} color="var(--primary)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--primary)' }}>
+                    Your Previous Rating: {existingFeedback.rating}/5 Stars
                   </div>
-                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-                    Department: <strong>{activeGrievance.department_name}</strong> | Assigned Officer: <strong>{activeGrievance.officer_name || 'Designated Inspector'}</strong>
+                  <p style={{ fontSize: '0.8125rem', color: 'var(--text-main)', marginTop: '0.2rem' }}>
+                    "{existingFeedback.remarks}"
+                  </p>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+                    Submitted on {new Date(existingFeedback.submittedAt).toLocaleString()} • You may update your rating below.
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
 
-                {existingFeedback ? (
-                  /* Already Submitted Feedback Display */
-                  <div style={{ backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 'var(--radius-lg)', padding: '1.5rem' }}>
-                    <div className="flex items-center gap-2" style={{ color: '#065f46', marginBottom: '0.75rem' }}>
-                      <CheckCircle2 size={22} />
-                      <h3 style={{ fontSize: '1.05rem', fontWeight: 800 }}>Feedback Recorded</h3>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginBottom: '0.75rem' }}>
-                      {[1, 2, 3, 4, 5].map((s) => (
+          {/* Rating Form Card */}
+          <div className="card">
+            <div className="card-header">
+              <span className="card-title">Rate Service Quality</span>
+            </div>
+
+            <form onSubmit={handleSubmitFeedback} className="card-body">
+              {/* Star Rating Strip */}
+              <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.65rem' }}>
+                  Select overall satisfaction level
+                </div>
+
+                <div style={{ display: 'inline-flex', gap: '0.5rem', cursor: 'pointer' }}>
+                  {[1, 2, 3, 4, 5].map((starVal) => {
+                    const isFilled = (hoverRating || rating) >= starVal;
+                    return (
+                      <button
+                        key={starVal}
+                        type="button"
+                        onClick={() => setRating(starVal)}
+                        onMouseEnter={() => setHoverRating(starVal)}
+                        onMouseLeave={() => setHoverRating(0)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: '0.2rem',
+                          color: isFilled ? 'var(--status-pending-text)' : 'var(--border-strong)',
+                          transition: 'transform var(--transition-fast)',
+                        }}
+                        aria-label={`Rate ${starVal} stars`}
+                      >
                         <Star
-                          key={s}
-                          size={22}
-                          color={s <= existingFeedback.rating ? '#f59e0b' : '#cbd5e1'}
-                          fill={s <= existingFeedback.rating ? '#f59e0b' : 'none'}
+                          size={28}
+                          fill={isFilled ? 'var(--status-pending-text)' : 'transparent'}
+                          strokeWidth={1.5}
                         />
-                      ))}
-                      <span style={{ fontWeight: 700, fontSize: '0.875rem', color: '#065f46', marginLeft: '0.5rem' }}>
-                        {existingFeedback.ratingLabel}
-                      </span>
-                    </div>
-                    <div style={{ backgroundColor: '#ffffff', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid #a7f3d0', fontSize: '0.875rem', lineHeight: 1.5, color: '#1f2937' }}>
-                      <strong>Your Remarks:</strong> "{existingFeedback.remarks}"
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: '#065f46', marginTop: '0.75rem' }}>
-                      Recorded on {new Date(existingFeedback.submittedAt).toLocaleString()}
-                    </div>
-                  </div>
-                ) : (
-                  /* Feedback Input Form */
-                  <form onSubmit={handleSubmitFeedback}>
-                    {/* 5-Star Rating Widget */}
-                    <div className="form-group">
-                      <label className="form-label" style={{ fontSize: '0.9375rem' }}>
-                        Overall Satisfaction Rating <span className="required">*</span>
-                      </label>
-                      <div className="star-rating" style={{ margin: '0.5rem 0' }}>
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <button
-                            key={star}
-                            type="button"
-                            className="star-btn"
-                            onClick={() => setRating(star)}
-                            onMouseEnter={() => setHoverRating(star)}
-                            onMouseLeave={() => setHoverRating(0)}
-                            title={`${star} Star`}
-                          >
-                            <Star
-                              size={32}
-                              color={(hoverRating || rating) >= star ? '#f59e0b' : '#cbd5e1'}
-                              fill={(hoverRating || rating) >= star ? '#f59e0b' : 'none'}
-                            />
-                          </button>
-                        ))}
-                      </div>
-                      <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--primary)' }}>
-                        {RATING_LABELS[hoverRating || rating]}
-                      </div>
-                    </div>
-
-                    {/* Specific Service Metrics */}
-                    <div className="form-group" style={{ marginTop: '1.25rem' }}>
-                      <label className="form-label">Redressal Performance Criteria</label>
-                      <div className="grid grid-cols-3 md-grid-cols-1 gap-3" style={{ marginTop: '0.375rem' }}>
-                        <label
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            padding: '0.75rem',
-                            borderRadius: 'var(--radius-md)',
-                            border: '1px solid var(--border-color)',
-                            backgroundColor: satisfactionAspects.quality ? '#eff6ff' : '#f8fafc',
-                            cursor: 'pointer',
-                            fontSize: '0.8125rem',
-                            fontWeight: 600,
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={satisfactionAspects.quality}
-                            onChange={(e) =>
-                              setSatisfactionAspects((prev) => ({ ...prev, quality: e.target.checked }))
-                            }
-                          />
-                          <span>Proper Resolution Quality</span>
-                        </label>
-
-                        <label
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            padding: '0.75rem',
-                            borderRadius: 'var(--radius-md)',
-                            border: '1px solid var(--border-color)',
-                            backgroundColor: satisfactionAspects.timeliness ? '#eff6ff' : '#f8fafc',
-                            cursor: 'pointer',
-                            fontSize: '0.8125rem',
-                            fontWeight: 600,
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={satisfactionAspects.timeliness}
-                            onChange={(e) =>
-                              setSatisfactionAspects((prev) => ({ ...prev, timeliness: e.target.checked }))
-                            }
-                          />
-                          <span>Timely Resolution</span>
-                        </label>
-
-                        <label
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            padding: '0.75rem',
-                            borderRadius: 'var(--radius-md)',
-                            border: '1px solid var(--border-color)',
-                            backgroundColor: satisfactionAspects.communication ? '#eff6ff' : '#f8fafc',
-                            cursor: 'pointer',
-                            fontSize: '0.8125rem',
-                            fontWeight: 600,
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={satisfactionAspects.communication}
-                            onChange={(e) =>
-                              setSatisfactionAspects((prev) => ({ ...prev, communication: e.target.checked }))
-                            }
-                          />
-                          <span>Officer Professionalism</span>
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* Remarks Textarea */}
-                    <div className="form-group" style={{ marginTop: '1.25rem' }}>
-                      <label className="form-label">
-                        Detailed Remarks & Suggestions <span className="required">*</span>
-                      </label>
-                      <textarea
-                        className="form-textarea"
-                        rows={4}
-                        placeholder="Describe your experience: Was the issue resolved completely? Any suggestions for the department?"
-                        value={remarks}
-                        onChange={(e) => setRemarks(e.target.value)}
-                        disabled={isSubmitting}
-                      />
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
-                      <button type="submit" className="btn btn-primary btn-lg" disabled={isSubmitting || !remarks.trim()}>
-                        <Send size={18} />
-                        <span>{isSubmitting ? 'Submitting Feedback...' : 'Submit Official Feedback'}</span>
                       </button>
-                    </div>
-                  </form>
-                )}
+                    );
+                  })}
+                </div>
+
+                <div
+                  style={{
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    color: 'var(--text-heading)',
+                    marginTop: '0.5rem',
+                  }}
+                >
+                  {RATING_LABELS[hoverRating || rating]}
+                </div>
               </div>
-            ) : (
-              <div className="empty-state">
-                <p>Please select a resolved grievance from the list to leave your feedback.</p>
+
+              {/* Performance Criteria Checklist */}
+              <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                <label className="form-label" style={{ marginBottom: '0.5rem' }}>
+                  <span>Which aspects were handled satisfactorily?</span>
+                </label>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.5rem' }}>
+                  <label
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.6rem 0.75rem',
+                      backgroundColor: 'var(--bg-subtle)',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-subtle)',
+                      fontSize: '0.8125rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={satisfactionAspects.timeliness}
+                      onChange={(e) =>
+                        setSatisfactionAspects((prev) => ({ ...prev, timeliness: e.target.checked }))
+                      }
+                      style={{ accentColor: 'var(--primary)' }}
+                    />
+                    <span>Prompt Turnaround Time</span>
+                  </label>
+
+                  <label
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.6rem 0.75rem',
+                      backgroundColor: 'var(--bg-subtle)',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-subtle)',
+                      fontSize: '0.8125rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={satisfactionAspects.quality}
+                      onChange={(e) =>
+                        setSatisfactionAspects((prev) => ({ ...prev, quality: e.target.checked }))
+                      }
+                      style={{ accentColor: 'var(--primary)' }}
+                    />
+                    <span>Work Quality & Completeness</span>
+                  </label>
+
+                  <label
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.6rem 0.75rem',
+                      backgroundColor: 'var(--bg-subtle)',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-subtle)',
+                      fontSize: '0.8125rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={satisfactionAspects.communication}
+                      onChange={(e) =>
+                        setSatisfactionAspects((prev) => ({ ...prev, communication: e.target.checked }))
+                      }
+                      style={{ accentColor: 'var(--primary)' }}
+                    />
+                    <span>Officer Communication</span>
+                  </label>
+                </div>
               </div>
-            )}
+
+              {/* Citizen Remarks Textarea */}
+              <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                <label className="form-label" htmlFor="feedback-remarks">
+                  <span>Citizen Remarks & Suggestions</span>
+                  <span className="form-label-required">*</span>
+                </label>
+                <textarea
+                  id="feedback-remarks"
+                  rows={3}
+                  className="form-textarea"
+                  placeholder="Share your experience regarding this resolution (e.g. Clean repair work, polite officer, or areas of improvement)..."
+                  value={remarks}
+                  onChange={(e) => setRemarks(e.target.value)}
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <span>Submitting Rating...</span>
+                  ) : (
+                    <>
+                      <Send size={14} />
+                      <span>{existingFeedback ? 'Update Feedback' : 'Submit Feedback'}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

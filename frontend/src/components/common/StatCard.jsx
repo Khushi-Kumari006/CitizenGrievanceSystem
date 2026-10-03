@@ -1,18 +1,21 @@
 import React from 'react';
 
-export const StatCard = ({ title, value, icon: Icon, color = '#2563eb', bg = '#eff6ff', subtitle }) => {
+export const StatCard = ({
+  title,
+  value,
+  icon: Icon,
+  subtitle,
+}) => {
   return (
-    <div className="stat-card">
-      <div className="stat-icon-wrapper" style={{ backgroundColor: bg, color }}>
-        <Icon size={26} />
+    <div className="stat-item">
+      <div className="stat-label">
+        <span>{title}</span>
+        {Icon && <Icon size={16} style={{ opacity: 0.7 }} />}
       </div>
-      <div>
-        <div className="stat-value" style={{ color: 'var(--text-main)' }}>
-          {value !== undefined && value !== null ? value : 0}
-        </div>
-        <div className="stat-label">{title}</div>
-        {subtitle && <div style={{ fontSize: '0.75rem', color: 'var(--text-light)', marginTop: '2px' }}>{subtitle}</div>}
+      <div className="stat-value">
+        {value !== undefined && value !== null ? value : 0}
       </div>
+      {subtitle && <div className="stat-helper">{subtitle}</div>}
     </div>
   );
 };

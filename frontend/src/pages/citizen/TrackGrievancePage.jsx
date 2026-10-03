@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useSearchParams, Link, useNavigate } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { grievanceApi } from '../../api/grievances';
 import { useToast } from '../../context/ToastContext';
 import { StatusBadge } from '../../components/common/StatusBadge';
@@ -10,32 +10,29 @@ import {
   SearchCheck,
   Building2,
   Tags,
-  User,
   ShieldCheck,
   MapPin,
   Calendar,
   History,
   CheckCircle2,
-  ArrowRight,
   MessageSquare,
   Star,
   AlertCircle,
-  Clock,
-  ShieldAlert,
-  HelpCircle,
+  FileText,
+  User,
 } from 'lucide-react';
 
 const STEP_STAGES = [
-  { key: 'SUBMITTED', label: '1. Submitted' },
-  { key: 'UNDER_REVIEW', label: '2. Under Review' },
-  { key: 'ASSIGNED', label: '3. Assigned' },
-  { key: 'IN_PROGRESS', label: '4. In Progress' },
-  { key: 'RESOLVED', label: '5. Resolved' },
+  { key: 'SUBMITTED', label: 'Submitted', num: 1 },
+  { key: 'UNDER_REVIEW', label: 'Under Review', num: 2 },
+  { key: 'ASSIGNED', label: 'Assigned', num: 3 },
+  { key: 'IN_PROGRESS', label: 'In Progress', num: 4 },
+  { key: 'RESOLVED', label: 'Resolved', num: 5 },
 ];
 
 export const TrackGrievancePage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialQuery = searchParams.get('number') || '';
+  const initialQuery = searchParams.get('number') || searchParams.get('trackingNumber') || '';
   const [trackingNumber, setTrackingNumber] = useState(initialQuery);
   const [grievance, setGrievance] = useState(null);
   const [recentGrievances, setRecentGrievances] = useState([]);
@@ -43,9 +40,7 @@ export const TrackGrievancePage = () => {
   const [hasSearched, setHasSearched] = useState(Boolean(initialQuery));
 
   const { showToast } = useToast();
-  const navigate = useNavigate();
 
-  // Fetch citizen's recent grievances for quick search chips
   useEffect(() => {
     const fetchRecent = async () => {
       try {
@@ -90,7 +85,7 @@ export const TrackGrievancePage = () => {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (!trackingNumber.trim()) {
-      showToast('Please enter a valid tracking number (e.g. GRV-2026...) or ID', 'warning');
+      showToast('Please enter a valid tracking number or ID', 'warning');
       return;
     }
     setSearchParams({ number: trackingNumber.trim() });
@@ -103,7 +98,6 @@ export const TrackGrievancePage = () => {
     performSearch(num);
   };
 
-  // Determine active step index in progress stepper
   const getActiveStepIndex = (status) => {
     switch (status) {
       case 'SUBMITTED':
@@ -127,66 +121,85 @@ export const TrackGrievancePage = () => {
   const activeIndex = grievance ? getActiveStepIndex(grievance.status) : 0;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', maxWidth: '1000px', margin: '0 auto' }}>
-      {/* Header */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '980px', margin: '0 auto' }}>
+      {/* Page Header */}
       <div>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)' }}>Track Grievance Status</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-          Real-time tracking of investigation, officer assignments, departmental actions, and resolution timelines
+        <h1 style={{ fontSize: '1.45rem', fontWeight: 700, color: 'var(--text-heading)' }}>
+          Track Grievance Status
+        </h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.84rem', marginTop: '0.15rem' }}>
+          Inspect investigation progress, officer assignments, and chronological status history
         </p>
       </div>
 
-      {/* Tracking Search Card */}
-      <div
-        className="card"
-        style={{
-          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-          border: '1.5px solid var(--border-color)',
-          padding: '1.75rem',
-        }}
-      >
+      {/* Search Bar Card */}
+      <div className="card" style={{ padding: '1.25rem' }}>
         <form onSubmit={handleSearchSubmit}>
-          <label className="form-label" style={{ marginBottom: '0.5rem', display: 'block' }}>
-            Enter Grievance Tracking Number or System ID
+          <label className="form-label" style={{ marginBottom: '0.45rem' }}>
+            <span>Enter Grievance Tracking Code or ID</span>
           </label>
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: '260px', position: 'relative' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: '220px', position: 'relative' }}>
               <Search
-                size={18}
-                style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }}
+                size={16}
+                style={{
+                  position: 'absolute',
+                  left: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--text-placeholder)',
+                }}
               />
               <input
                 type="text"
                 className="form-input"
-                style={{ paddingLeft: '2.75rem', fontSize: '1rem', fontFamily: 'monospace', fontWeight: 600 }}
-                placeholder="e.g. GRV-20260921-A1B2C or 1"
+                style={{
+                  paddingLeft: '2.4rem',
+                  fontFamily: 'monospace',
+                  fontWeight: 600,
+                }}
+                placeholder="e.g. GRV-2026-..."
                 value={trackingNumber}
                 onChange={(e) => setTrackingNumber(e.target.value)}
               />
             </div>
-            <button type="submit" className="btn btn-primary" style={{ padding: '0.625rem 1.75rem' }} disabled={isLoading}>
-              <SearchCheck size={18} />
-              <span>{isLoading ? 'Searching...' : 'Track Grievance'}</span>
+            <button type="submit" className="btn btn-primary" disabled={isLoading}>
+              <SearchCheck size={16} />
+              <span>{isLoading ? 'Tracking...' : 'Search'}</span>
             </button>
           </div>
         </form>
 
-        {/* Quick Clickable Tracking Chips from citizen's recent submissions */}
+        {/* Quick Recent Chips */}
         {recentGrievances.length > 0 && (
-          <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
-              Your Recent Grievances:
+          <div style={{ marginTop: '0.85rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-subtle)' }}>
+            <div
+              style={{
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                color: 'var(--text-placeholder)',
+                marginBottom: '0.4rem',
+                letterSpacing: '0.04em',
+              }}
+            >
+              Your Recent Grievances
             </div>
-            <div className="filter-chip-group">
-              {recentGrievances.map((g) => (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+              {recentGrievances.map((rg) => (
                 <button
-                  key={g.id}
+                  key={rg.id}
                   type="button"
-                  className={`filter-chip ${trackingNumber === g.grievance_number ? 'active' : ''}`}
-                  onClick={() => handleChipClick(g.grievance_number)}
+                  onClick={() => handleChipClick(rg.trackingNumber)}
+                  className="btn btn-secondary btn-sm"
+                  style={{
+                    fontFamily: 'monospace',
+                    fontSize: '0.75rem',
+                    padding: '0.2rem 0.5rem',
+                  }}
                 >
-                  <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{g.grievance_number}</span>
-                  <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>({g.title.slice(0, 16)}...)</span>
+                  <span>{rg.trackingNumber}</span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({rg.status})</span>
                 </button>
               ))}
             </div>
@@ -194,242 +207,259 @@ export const TrackGrievancePage = () => {
         )}
       </div>
 
-      {/* Results Container */}
-      {isLoading ? (
-        <LoadingSpinner text="Locating grievance audit records..." />
-      ) : grievance ? (
+      {isLoading && <LoadingSpinner text="Locating grievance records..." />}
+
+      {!isLoading && hasSearched && !grievance && (
+        <div className="card" style={{ padding: '2.5rem', textAlign: 'center' }}>
+          <AlertCircle size={28} color="var(--status-danger-text)" style={{ margin: '0 auto 0.75rem auto' }} />
+          <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-heading)' }}>
+            No Grievance Record Found
+          </h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', marginTop: '0.25rem' }}>
+            No grievance matching tracking code "<strong>{trackingNumber}</strong>" was found in the database.
+          </p>
+        </div>
+      )}
+
+      {!isLoading && grievance && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {/* Status Progress Stepper Banner */}
-          <div className="card" style={{ padding: '1.75rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.375rem' }}>
-                  <span style={{ fontFamily: 'monospace', fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)' }}>
-                    {grievance.grievance_number}
-                  </span>
-                  <StatusBadge status={grievance.status} />
-                  <PriorityBadge priority={grievance.priority} />
-                </div>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>{grievance.title}</h2>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {['RESOLVED', 'CLOSED'].includes(grievance.status) && (
-                  <Link to={`/citizen/feedback?id=${grievance.id}`} className="btn btn-sm" style={{ backgroundColor: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }}>
-                    <Star size={14} />
-                    <span>Provide Feedback</span>
-                  </Link>
-                )}
-                <Link to={`/grievances/${grievance.id}`} className="btn btn-secondary btn-sm">
-                  <MessageSquare size={14} />
-                  <span>Discussion & Details</span>
-                </Link>
-              </div>
-            </div>
-
-            {/* Stepper Graphic */}
-            {grievance.status === 'REJECTED' ? (
-              <div
-                style={{
-                  backgroundColor: '#fee2e2',
-                  border: '1px solid #fecaca',
-                  borderRadius: 'var(--radius-md)',
-                  padding: '1rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  color: '#991b1b',
-                  marginTop: '1rem',
-                }}
-              >
-                <AlertCircle size={24} />
-                <div>
-                  <div style={{ fontWeight: 700 }}>Grievance Closed / Rejected</div>
-                  <div style={{ fontSize: '0.8125rem' }}>
-                    This complaint was scrutinized and closed or marked outside municipal purview. Check audit remarks below.
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="stepper-container">
-                <div className="stepper-track">
-                  <div
-                    className="stepper-track-progress"
-                    style={{
-                      width: `${(Math.max(0, activeIndex) / (STEP_STAGES.length - 1)) * 100}%`,
-                    }}
-                  />
-                </div>
-
-                {STEP_STAGES.map((step, idx) => {
-                  const isCompleted = idx < activeIndex || (idx === activeIndex && activeIndex === STEP_STAGES.length - 1);
-                  const isActive = idx === activeIndex && activeIndex < STEP_STAGES.length - 1;
-
-                  return (
-                    <div
-                      key={step.key}
-                      className={`stepper-step ${isCompleted ? 'completed' : ''} ${isActive ? 'active' : ''}`}
-                    >
-                      <div className="stepper-circle">
-                        {isCompleted ? <CheckCircle2 size={20} /> : idx + 1}
-                      </div>
-                      <span className="stepper-label">{step.label}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Details Overview Card */}
-          <div className="card">
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '1rem' }}>Grievance Parameters</h3>
-            <div className="grid grid-cols-4 lg-grid-cols-2 md-grid-cols-1 gap-4">
-              <div style={{ backgroundColor: '#f8fafc', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-                <div className="flex items-center gap-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>
-                  <Building2 size={16} color="var(--primary)" />
-                  <span>Department</span>
-                </div>
-                <div style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-main)', marginTop: '0.375rem' }}>
-                  {grievance.department_name}
-                </div>
-              </div>
-
-              <div style={{ backgroundColor: '#f8fafc', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-                <div className="flex items-center gap-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>
-                  <Tags size={16} color="var(--accent)" />
-                  <span>Category</span>
-                </div>
-                <div style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-main)', marginTop: '0.375rem' }}>
-                  {grievance.category_name}
-                </div>
-              </div>
-
-              <div style={{ backgroundColor: '#f8fafc', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-                <div className="flex items-center gap-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>
-                  <ShieldCheck size={16} color="#059669" />
-                  <span>Assigned Officer</span>
-                </div>
-                <div style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-main)', marginTop: '0.375rem' }}>
-                  {grievance.officer_name ? (
-                    <span>{grievance.officer_name}</span>
-                  ) : (
-                    <span style={{ color: 'var(--text-light)', fontStyle: 'italic', fontWeight: 500 }}>
-                      Pending Allocation
-                    </span>
-                  )}
-                </div>
-                {grievance.officer_email && (
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{grievance.officer_email}</div>
-                )}
-              </div>
-
-              <div style={{ backgroundColor: '#f8fafc', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-                <div className="flex items-center gap-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>
-                  <Calendar size={16} color="#0284c7" />
-                  <span>Filed Date</span>
-                </div>
-                <div style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-main)', marginTop: '0.375rem' }}>
-                  {new Date(grievance.created_at).toLocaleDateString()}
-                </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  {new Date(grievance.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </div>
-              </div>
-            </div>
-
-            {/* Location & Description */}
-            <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
-              {grievance.location && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
-                  <MapPin size={16} color="var(--danger)" />
-                  <span><strong>Reported Location:</strong> {grievance.location}</span>
-                </div>
-              )}
-              <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                <strong>Issue Description:</strong> {grievance.description}
-              </div>
-            </div>
-          </div>
-
-          {/* Chronological Status Audit Timeline */}
+          {/* Progress Timeline Stepper Card */}
           <div className="card">
             <div className="card-header">
-              <div className="flex items-center gap-2">
-                <History size={20} color="var(--primary)" />
-                <h3 className="card-title">Chronological Action & Audit History</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span className="card-title">Resolution Lifecycle</span>
+                <span style={{ fontFamily: 'monospace', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                  {grievance.trackingNumber}
+                </span>
               </div>
-              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                {grievance.status_history?.length || 1} logged events
-              </span>
+              <StatusBadge status={grievance.status} />
             </div>
 
-            <div className="timeline">
-              {grievance.status_history && grievance.status_history.length > 0 ? (
-                grievance.status_history.map((h, idx) => (
-                  <div key={h.id || idx} className="timeline-item">
-                    <div className="timeline-dot" />
-                    <div className="timeline-content">
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                        <StatusBadge status={h.new_status} />
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                          {new Date(h.created_at).toLocaleString()}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.375rem' }}>
-                        Updated by <strong>{h.changed_by_name || 'System / Municipal Officer'}</strong> {h.changed_by_role && `(${h.changed_by_role})`}
-                      </div>
-                      {h.remarks && (
-                        <div
-                          style={{
-                            fontSize: '0.875rem',
-                            color: 'var(--text-main)',
-                            marginTop: '0.5rem',
-                            padding: '0.5rem 0.75rem',
-                            backgroundColor: '#ffffff',
-                            borderRadius: 'var(--radius-sm)',
-                            border: '1px solid var(--border-color)',
-                            fontStyle: 'italic',
-                          }}
-                        >
-                          "{h.remarks}"
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))
+            <div className="card-body">
+              {grievance.status === 'REJECTED' ? (
+                <div
+                  style={{
+                    padding: '1rem',
+                    backgroundColor: 'var(--status-danger-bg)',
+                    border: '1px solid var(--status-danger-border)',
+                    borderRadius: 'var(--radius-sm)',
+                    color: 'var(--status-danger-text)',
+                    fontSize: '0.84rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                  }}
+                >
+                  <AlertCircle size={18} />
+                  <span>
+                    This grievance was marked as <strong>REJECTED</strong>. Check the audit timeline remarks below for the rejection justification.
+                  </span>
+                </div>
               ) : (
-                <div className="timeline-item">
-                  <div className="timeline-dot" />
-                  <div className="timeline-content">
-                    <StatusBadge status={grievance.status} />
-                    <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.375rem' }}>
-                      Grievance submitted by citizen
-                    </div>
-                  </div>
+                <div className="track-stepper">
+                  {STEP_STAGES.map((step, idx) => {
+                    const isCompleted = activeIndex > idx || (activeIndex === 4 && idx === 4);
+                    const isCurrent = activeIndex === idx && activeIndex !== 4;
+                    const nodeClass = isCompleted ? 'completed' : isCurrent ? 'current' : '';
+
+                    return (
+                      <div key={step.key} className={`track-step-node ${nodeClass}`}>
+                        <div className="track-circle">
+                          {isCompleted ? <CheckCircle2 size={16} /> : step.num}
+                        </div>
+                        <div className="track-label">{step.label}</div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
           </div>
-        </div>
-      ) : hasSearched ? (
-        <div className="card empty-state">
-          <AlertCircle size={48} className="empty-state-icon" style={{ color: 'var(--warning)' }} />
-          <h3 style={{ fontSize: '1.125rem', fontWeight: 700 }}>No Grievance Record Found</h3>
-          <p style={{ marginTop: '0.375rem', marginBottom: '1.25rem', fontSize: '0.875rem' }}>
-            We could not find any grievance matching "{trackingNumber}". Please check the tracking number for any typos or select one of your recent grievances above.
-          </p>
-          <button onClick={() => setTrackingNumber('')} className="btn btn-secondary">
-            Clear Search
-          </button>
-        </div>
-      ) : (
-        <div className="card empty-state" style={{ backgroundColor: '#ffffff' }}>
-          <SearchCheck size={48} className="empty-state-icon" />
-          <h3 style={{ fontSize: '1.125rem', fontWeight: 700 }}>Ready to Track</h3>
-          <p style={{ marginTop: '0.375rem', fontSize: '0.875rem' }}>
-            Enter your unique grievance tracking number above (e.g. GRV-20260921-XXXXX) to view current status and full investigation timeline.
-          </p>
+
+          {/* Grievance Summary & Parameters Card */}
+          <div className="card">
+            <div className="card-header">
+              <span className="card-title">Grievance Overview</span>
+              <div style={{ display: 'flex', gap: '0.4rem' }}>
+                <Link to={`/grievances/${grievance.id}`} className="btn btn-secondary btn-sm">
+                  <MessageSquare size={13} />
+                  <span>Comments Thread</span>
+                </Link>
+                {['RESOLVED', 'CLOSED'].includes(grievance.status) && (
+                  <Link
+                    to={`/citizen/feedback?grievanceId=${grievance.id}`}
+                    className="btn btn-primary btn-sm"
+                  >
+                    <Star size={13} />
+                    <span>Submit Feedback</span>
+                  </Link>
+                )}
+              </div>
+            </div>
+
+            <div className="card-body">
+              <h2 style={{ fontSize: '1.15rem', fontWeight: 600, color: 'var(--text-heading)', marginBottom: '0.35rem' }}>
+                {grievance.title}
+              </h2>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-main)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
+                {grievance.description}
+              </p>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                  gap: '0.75rem',
+                  padding: '1rem',
+                  backgroundColor: 'var(--bg-subtle)',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border-subtle)',
+                }}
+              >
+                <div>
+                  <span className="text-xs text-muted font-medium" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <Building2 size={13} /> Department
+                  </span>
+                  <div style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-heading)', marginTop: '0.15rem' }}>
+                    {grievance.department?.name || 'General Administration'}
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-xs text-muted font-medium" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <Tags size={13} /> Category
+                  </span>
+                  <div style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-heading)', marginTop: '0.15rem' }}>
+                    {grievance.category?.name || 'General Issue'}
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-xs text-muted font-medium">Priority Classification</span>
+                  <div style={{ marginTop: '0.2rem' }}>
+                    <PriorityBadge priority={grievance.priority} />
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-xs text-muted font-medium" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <Calendar size={13} /> Lodged On
+                  </span>
+                  <div style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-heading)', marginTop: '0.15rem' }}>
+                    {new Date(grievance.createdAt).toLocaleString()}
+                  </div>
+                </div>
+
+                {grievance.location && (
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <span className="text-xs text-muted font-medium" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                      <MapPin size={13} /> Location Landmark
+                    </span>
+                    <div style={{ fontSize: '0.84rem', color: 'var(--text-main)', marginTop: '0.15rem' }}>
+                      {grievance.location}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Assigned Officer Block if present */}
+          {grievance.assignedOfficer && (
+            <div className="card">
+              <div className="card-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <ShieldCheck size={16} color="var(--primary)" />
+                  <span className="card-title">Assigned Inspecting Officer</span>
+                </div>
+              </div>
+              <div className="card-body" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: 'var(--primary-subtle)',
+                    color: 'var(--primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <User size={18} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-heading)' }}>
+                    {grievance.assignedOfficer.name}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    {grievance.assignedOfficer.email} • {grievance.department?.name}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Status Change Audit Trail */}
+          <div className="card">
+            <div className="card-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <History size={16} color="var(--primary)" />
+                <span className="card-title">Chronological Audit History</span>
+              </div>
+            </div>
+
+            <div className="card-body">
+              {grievance.statusHistory && grievance.statusHistory.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {grievance.statusHistory.map((item, index) => (
+                    <div
+                      key={item.id || index}
+                      style={{
+                        display: 'flex',
+                        gap: '0.75rem',
+                        paddingBottom: '1rem',
+                        borderBottom:
+                          index < grievance.statusHistory.length - 1 ? '1px solid var(--border-subtle)' : 'none',
+                      }}
+                    >
+                      <div style={{ marginTop: '2px' }}>
+                        <StatusBadge status={item.to_status || item.newStatus || item.status} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-heading)' }}>
+                            Status updated by {item.changed_by_name || item.user?.name || 'Department Officer'}
+                          </span>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                            {new Date(item.created_at || item.createdAt).toLocaleString()}
+                          </span>
+                        </div>
+                        {item.remarks && (
+                          <div
+                            style={{
+                              marginTop: '0.35rem',
+                              padding: '0.5rem 0.75rem',
+                              backgroundColor: 'var(--bg-subtle)',
+                              borderRadius: 'var(--radius-sm)',
+                              fontSize: '0.8125rem',
+                              color: 'var(--text-main)',
+                            }}
+                          >
+                            {item.remarks}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', textAlign: 'center', padding: '1rem 0' }}>
+                  Grievance is currently in registered state. Investigation remarks will be logged here as officers process the case.
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

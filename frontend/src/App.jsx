@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
+import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import DashboardLayout from './components/layout/DashboardLayout';
 
@@ -49,10 +50,11 @@ const RootRedirect = () => {
 
 function App() {
   return (
-    <BrowserRouter>
-      <ToastProvider>
-        <AuthProvider>
-          <Routes>
+    <ThemeProvider>
+      <BrowserRouter>
+        <ToastProvider>
+          <AuthProvider>
+            <Routes>
             {/* Public Routes */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
@@ -203,6 +205,7 @@ function App() {
         </AuthProvider>
       </ToastProvider>
     </BrowserRouter>
+  </ThemeProvider>
   );
 }
 

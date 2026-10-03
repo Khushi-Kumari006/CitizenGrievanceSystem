@@ -5,19 +5,19 @@ import { departmentApi } from '../../api/departments';
 import { categoryApi } from '../../api/categories';
 import { useToast } from '../../context/ToastContext';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+import { LocationPickerMap } from '../../components/common/LocationPickerMap';
 import {
-  PlusCircle,
   ArrowLeft,
+  MapPin,
+  Upload,
+  CheckCircle2,
+  X,
   Building2,
   Tags,
   AlertTriangle,
-  MapPin,
   FileText,
-  Upload,
-  Image as ImageIcon,
-  CheckCircle2,
-  Info,
-  X,
+  ShieldCheck,
+  Send,
 } from 'lucide-react';
 
 const CATEGORY_DEPARTMENT_MAP = {
@@ -32,6 +32,13 @@ const CATEGORY_DEPARTMENT_MAP = {
   'Other': 'Water Department',
 };
 
+const PRIORITY_OPTIONS = [
+  { value: 'LOW', label: 'Low', desc: 'Minor inconvenience / routine maintenance' },
+  { value: 'MEDIUM', label: 'Medium', desc: 'Standard issue affecting daily life' },
+  { value: 'HIGH', label: 'High', desc: 'Severe disruption requiring fast action' },
+  { value: 'CRITICAL', label: 'Critical', desc: 'Immediate safety hazard / emergency' },
+];
+
 export const SubmitGrievancePage = () => {
   const [searchParams] = useSearchParams();
   const initialCategoryName = searchParams.get('category') || '';
@@ -45,8 +52,11 @@ export const SubmitGrievancePage = () => {
     priority: 'MEDIUM',
     location: '',
     attachment_path: '',
+    latitude: null,
+    longitude: null,
   });
 
+  const [isMapConfirmed, setIsMapConfirmed] = useState(false);
   const [departments, setDepartments] = useState([]);
   const [categories, setCategories] = useState([]);
   const [isLoadingMetadata, setIsLoadingMetadata] = useState(true);
@@ -71,7 +81,6 @@ export const SubmitGrievancePage = () => {
         setDepartments(depts);
         setCategories(cats);
 
-        // Pre-select category and department from URL query params if provided
         let targetCatId = '';
         let targetDeptId = '';
 
@@ -113,13 +122,13 @@ export const SubmitGrievancePage = () => {
   const validate = () => {
     const errs = {};
     if (!formData.title.trim()) {
-      errs.title = 'Grievance summary / title is required';
+      errs.title = 'Grievance title is required';
     } else if (formData.title.trim().length < 5) {
       errs.title = 'Title should be at least 5 characters';
     }
 
     if (!formData.department_id) {
-      errs.department_id = 'Please select the responsible municipal department';
+      errs.department_id = 'Please select the responsible department';
     }
 
     if (!formData.category_id) {
@@ -127,11 +136,11 @@ export const SubmitGrievancePage = () => {
     }
 
     if (!formData.location.trim()) {
-      errs.location = 'Please specify the exact landmark / address where issue is located';
+      errs.location = 'Please specify the street / landmark location';
     }
 
     if (!formData.description.trim()) {
-      errs.description = 'Please provide a detailed description of the issue';
+      errs.description = 'Please provide a detailed description of the problem';
     } else if (formData.description.trim().length < 10) {
       errs.description = 'Description must be at least 10 characters';
     }
@@ -145,7 +154,6 @@ export const SubmitGrievancePage = () => {
     setFormData((prev) => {
       const updated = { ...prev, [name]: value };
 
-      // Auto-suggest department when category changes
       if (name === 'category_id' && value) {
         const selectedCat = categories.find((c) => String(c.id) === String(value));
         if (selectedCat && CATEGORY_DEPARTMENT_MAP[selectedCat.name]) {
@@ -167,6 +175,42 @@ export const SubmitGrievancePage = () => {
     }
   };
 
+  const handleLocationSelect = (lat, lng) => {
+    setIsMapConfirmed(false);
+    setFormData((prev) => ({
+      ...prev,
+      latitude: lat,
+      longitude: lng,
+    }));
+  };
+
+  const handleConfirmLocation = (lat, lng) => {
+    setIsMapConfirmed(true);
+    setFormData((prev) => {
+      const coordsTag = `[GPS: ${lat}, ${lng}]`;
+      let newLocation = prev.location.trim();
+
+      if (!newLocation) {
+        newLocation = `Location Coordinates: ${lat}, ${lng}`;
+      } else if (!newLocation.includes('GPS:') && !newLocation.includes(String(lat))) {
+        newLocation = `${newLocation} ${coordsTag}`;
+      }
+
+      return {
+        ...prev,
+        latitude: lat,
+        longitude: lng,
+        location: newLocation,
+      };
+    });
+
+    if (errors.location) {
+      setErrors((prev) => ({ ...prev, location: null }));
+    }
+
+    showToast(`Location coordinates (${lat}, ${lng}) saved!`, 'success');
+  };
+
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -175,12 +219,11 @@ export const SubmitGrievancePage = () => {
         return;
       }
       setSelectedFileName(file.name);
-      // Set attachment path string
       setFormData((prev) => ({
         ...prev,
         attachment_path: `uploads/${Date.now()}_${file.name.replace(/\s+/g, '_')}`,
       }));
-      showToast(`Attachment "${file.name}" attached`, 'info');
+      showToast(`Attached: ${file.name}`, 'info');
     }
   };
 
@@ -206,7 +249,7 @@ export const SubmitGrievancePage = () => {
       });
 
       if (res.success && res.data?.grievance) {
-        showToast('Grievance registered successfully! Tracking ID generated.', 'success');
+        showToast('Grievance lodged successfully!', 'success');
         navigate(`/citizen/track?number=${res.data.grievance.grievance_number}`);
       }
     } catch (err) {
@@ -217,62 +260,80 @@ export const SubmitGrievancePage = () => {
   };
 
   if (isLoadingMetadata) {
-    return <LoadingSpinner text="Loading departments & categories..." fullPage={true} />;
+    return <LoadingSpinner text="Loading departments & categories..." fullPage />;
   }
 
   return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-      {/* Back Button */}
-      <div style={{ marginBottom: '1.25rem' }}>
-        <Link to="/citizen/dashboard" className="btn btn-outline btn-sm">
-          <ArrowLeft size={16} />
+    <div style={{ maxWidth: '980px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      {/* Page Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+        <div>
+          <h1 style={{ fontSize: '1.45rem', fontWeight: 700, color: 'var(--text-heading)' }}>
+            Lodge Civic Grievance
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.84rem', marginTop: '0.15rem' }}>
+            Submit an official grievance for inspection and resolution by municipal staff
+          </p>
+        </div>
+        <Link to="/citizen/dashboard" className="btn btn-secondary btn-sm">
+          <ArrowLeft size={14} />
           <span>Back to Dashboard</span>
         </Link>
       </div>
 
-      <div className="grid grid-cols-3 lg-grid-cols-1 gap-6">
-        {/* Main Form (2 cols) */}
-        <div className="card" style={{ gridColumn: 'span 2', padding: '2rem' }}>
-          <div style={{ marginBottom: '1.75rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-color)' }}>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)' }}>Lodge Civic Grievance</h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-              Provide accurate issue parameters so the concerned department can inspect and initiate remedial action.
-            </p>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        {/* Section 1: Issue Details */}
+        <div className="card">
+          <div className="card-header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <FileText size={16} color="var(--primary)" />
+              <span className="card-title">1. Issue Classification & Summary</span>
+            </div>
+            <span className="badge badge-subtle">Required</span>
           </div>
 
-          <form onSubmit={handleSubmit}>
-            {/* Title */}
+          <div className="card-body">
+            {/* Title Input */}
             <div className="form-group">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <label className="form-label">
-                  Grievance Summary / Title <span className="required">*</span>
-                </label>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-light)' }}>
-                  {formData.title.length}/100
-                </span>
-              </div>
+              <label className="form-label" htmlFor="grievance-title">
+                <span>Summary / Title</span>
+                <span className="form-label-required">*</span>
+              </label>
               <input
+                id="grievance-title"
                 type="text"
                 name="title"
                 maxLength={100}
-                className={`form-input ${errors.title ? 'error' : ''}`}
-                placeholder="e.g. Contaminated drinking water supply in Block C"
+                className="form-input"
+                placeholder="e.g. Broken water pipeline causing low pressure in Block C"
                 value={formData.title}
                 onChange={handleChange}
                 disabled={isSubmitting}
               />
-              {errors.title && <div className="form-error">{errors.title}</div>}
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.2rem' }}>
+                {errors.title ? (
+                  <span className="form-error">{errors.title}</span>
+                ) : (
+                  <span className="form-hint">Be concise and describe the primary issue</span>
+                )}
+                <span className="form-hint">{formData.title.length}/100</span>
+              </div>
             </div>
 
-            {/* Category & Department Selection */}
-            <div className="grid grid-cols-2 md-grid-cols-1 gap-4">
+            {/* Category & Department Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
               <div className="form-group">
-                <label className="form-label">
-                  Issue Category <span className="required">*</span>
+                <label className="form-label" htmlFor="grievance-category">
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <Tags size={14} />
+                    <span>Category</span>
+                  </span>
+                  <span className="form-label-required">*</span>
                 </label>
                 <select
+                  id="grievance-category"
                   name="category_id"
-                  className={`form-select ${errors.category_id ? 'error' : ''}`}
+                  className="form-select"
                   value={formData.category_id}
                   onChange={handleChange}
                   disabled={isSubmitting}
@@ -284,16 +345,21 @@ export const SubmitGrievancePage = () => {
                     </option>
                   ))}
                 </select>
-                {errors.category_id && <div className="form-error">{errors.category_id}</div>}
+                {errors.category_id && <span className="form-error">{errors.category_id}</span>}
               </div>
 
               <div className="form-group">
-                <label className="form-label">
-                  Concerned Department <span className="required">*</span>
+                <label className="form-label" htmlFor="grievance-department">
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <Building2 size={14} />
+                    <span>Responsible Department</span>
+                  </span>
+                  <span className="form-label-required">*</span>
                 </label>
                 <select
+                  id="grievance-department"
                   name="department_id"
-                  className={`form-select ${errors.department_id ? 'error' : ''}`}
+                  className="form-select"
                   value={formData.department_id}
                   onChange={handleChange}
                   disabled={isSubmitting}
@@ -305,190 +371,245 @@ export const SubmitGrievancePage = () => {
                     </option>
                   ))}
                 </select>
-                {errors.department_id && <div className="form-error">{errors.department_id}</div>}
+                {errors.department_id && <span className="form-error">{errors.department_id}</span>}
               </div>
             </div>
 
-            {/* Priority & Specific Location */}
-            <div className="grid grid-cols-2 md-grid-cols-1 gap-4">
-              <div className="form-group">
-                <label className="form-label">Priority Level</label>
-                <select
-                  name="priority"
-                  className="form-select"
-                  value={formData.priority}
-                  onChange={handleChange}
-                  disabled={isSubmitting}
-                >
-                  <option value="LOW">Low (Minor inconvenience / standard)</option>
-                  <option value="MEDIUM">Medium (General disruption / attention)</option>
-                  <option value="HIGH">High (Major municipal malfunction)</option>
-                  <option value="CRITICAL">Critical (Hazard / safety emergency)</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">
-                  Location / Landmark <span className="required">*</span>
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <MapPin
-                    size={18}
-                    style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }}
-                  />
-                  <input
-                    type="text"
-                    name="location"
-                    className={`form-input ${errors.location ? 'error' : ''}`}
-                    style={{ paddingLeft: '2.5rem' }}
-                    placeholder="e.g. Near Community Park Gate #2, Ward 15"
-                    value={formData.location}
-                    onChange={handleChange}
-                    disabled={isSubmitting}
-                  />
-                </div>
-                {errors.location && <div className="form-error">{errors.location}</div>}
-              </div>
-            </div>
-
-            {/* Description */}
-            <div className="form-group">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <label className="form-label">
-                  Detailed Description <span className="required">*</span>
-                </label>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-light)' }}>
-                  Min 10 characters
-                </span>
-              </div>
+            {/* Detailed Description */}
+            <div className="form-group" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+              <label className="form-label" htmlFor="grievance-desc">
+                <span>Detailed Description</span>
+                <span className="form-label-required">*</span>
+              </label>
               <textarea
+                id="grievance-desc"
                 name="description"
-                className={`form-textarea ${errors.description ? 'error' : ''}`}
-                rows={5}
-                placeholder="Describe what happened, how long the issue has persisted, and any specific landmarks or details that will assist inspection teams..."
+                rows={4}
+                className="form-textarea"
+                placeholder="Describe the exact issue, when it started, and how it impacts the locality..."
                 value={formData.description}
                 onChange={handleChange}
                 disabled={isSubmitting}
               />
-              {errors.description && <div className="form-error">{errors.description}</div>}
+              {errors.description && <span className="form-error">{errors.description}</span>}
             </div>
+          </div>
+        </div>
 
-            {/* Attachment / Photo Input */}
+        {/* Section 2: Location & Geo-pinning */}
+        <div className="card">
+          <div className="card-header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <MapPin size={16} color="var(--primary)" />
+              <span className="card-title">2. Incident Location & Map Pin</span>
+            </div>
+            {isMapConfirmed && <span className="badge badge-resolved">GPS Pin Confirmed</span>}
+          </div>
+
+          <div className="card-body">
             <div className="form-group">
-              <label className="form-label">Supporting Photo / Document Attachment (Optional)</label>
-              {selectedFileName ? (
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '0.75rem 1rem',
-                    backgroundColor: '#eff6ff',
-                    border: '1px solid #bfdbfe',
-                    borderRadius: 'var(--radius-md)',
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <ImageIcon size={18} color="var(--primary)" />
-                    <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-main)' }}>
-                      {selectedFileName}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleRemoveFile}
-                    className="btn btn-outline btn-sm"
-                    style={{ padding: '0.2rem 0.5rem', color: 'var(--danger)' }}
-                    title="Remove file"
+              <label className="form-label" htmlFor="grievance-location">
+                <span>Street Address / Area Landmark</span>
+                <span className="form-label-required">*</span>
+              </label>
+              <input
+                id="grievance-location"
+                type="text"
+                name="location"
+                className="form-input"
+                placeholder="e.g. Near Community Center, Sector 4, Main Market Road"
+                value={formData.location}
+                onChange={handleChange}
+                disabled={isSubmitting}
+              />
+              {errors.location && <span className="form-error">{errors.location}</span>}
+            </div>
+
+            <div style={{ marginTop: '1rem' }}>
+              <LocationPickerMap
+                latitude={formData.latitude}
+                longitude={formData.longitude}
+                onLocationSelect={handleLocationSelect}
+                onConfirmLocation={handleConfirmLocation}
+                isConfirmed={isMapConfirmed}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Section 3: Priority & Classification */}
+        <div className="card">
+          <div className="card-header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <AlertTriangle size={16} color="var(--primary)" />
+              <span className="card-title">3. Urgency & Priority Level</span>
+            </div>
+          </div>
+
+          <div className="card-body">
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '0.75rem',
+              }}
+            >
+              {PRIORITY_OPTIONS.map((opt) => {
+                const isSelected = formData.priority === opt.value;
+                return (
+                  <label
+                    key={opt.value}
+                    style={{
+                      border: `1px solid ${isSelected ? 'var(--primary)' : 'var(--border-color)'}`,
+                      backgroundColor: isSelected ? 'var(--primary-subtle)' : 'var(--bg-surface)',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '0.85rem 1rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.25rem',
+                      transition: 'all var(--transition-fast)',
+                    }}
                   >
-                    <X size={14} />
-                    <span>Remove</span>
-                  </button>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontWeight: 600, fontSize: '0.875rem', color: isSelected ? 'var(--primary)' : 'var(--text-heading)' }}>
+                        {opt.label} Priority
+                      </span>
+                      <input
+                        type="radio"
+                        name="priority"
+                        value={opt.value}
+                        checked={isSelected}
+                        onChange={handleChange}
+                        style={{ accentColor: 'var(--primary)' }}
+                      />
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.3 }}>
+                      {opt.desc}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Section 4: Attachments */}
+        <div className="card">
+          <div className="card-header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Upload size={16} color="var(--primary)" />
+              <span className="card-title">4. Photos & Evidence (Optional)</span>
+            </div>
+            <span className="badge badge-subtle">Max 5MB</span>
+          </div>
+
+          <div className="card-body">
+            {selectedFileName ? (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0.75rem 1rem',
+                  backgroundColor: 'var(--bg-subtle)',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border-color)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                  <CheckCircle2 size={16} color="var(--status-resolved-text)" />
+                  <div>
+                    <div style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-heading)' }}>
+                      {selectedFileName}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Ready for upload</div>
+                  </div>
                 </div>
-              ) : (
-                <label
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '1.5rem',
-                    border: '2px dashed var(--border-color)',
-                    borderRadius: 'var(--radius-md)',
-                    backgroundColor: '#f8fafc',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--primary)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--border-color)')}
+                <button
+                  type="button"
+                  onClick={handleRemoveFile}
+                  className="btn btn-outline btn-sm"
+                  style={{ color: 'var(--status-danger-text)' }}
                 >
-                  <Upload size={24} color="var(--primary)" style={{ marginBottom: '0.5rem' }} />
-                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-main)' }}>
-                    Click to select a photo or document
+                  <X size={14} />
+                  <span>Remove</span>
+                </button>
+              </div>
+            ) : (
+              <label
+                style={{
+                  border: '1.5px dashed var(--border-strong)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '1.75rem 1.25rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  cursor: 'pointer',
+                  backgroundColor: 'var(--bg-subtle)',
+                  transition: 'background-color var(--transition-fast)',
+                  textAlign: 'center',
+                }}
+              >
+                <Upload size={24} color="var(--text-muted)" />
+                <div>
+                  <span style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-heading)' }}>
+                    Click to select photo or document
                   </span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                    JPG, PNG, PDF up to 5MB
-                  </span>
-                  <input
-                    type="file"
-                    accept="image/*,application/pdf"
-                    style={{ display: 'none' }}
-                    onChange={handleFileChange}
-                    disabled={isSubmitting}
-                  />
-                </label>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                    PNG, JPG, PDF up to 5MB
+                  </p>
+                </div>
+                <input
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={handleFileChange}
+                  style={{ display: 'none' }}
+                />
+              </label>
+            )}
+          </div>
+        </div>
+
+        {/* Section 5: Review & Submit Actions */}
+        <div
+          className="card"
+          style={{
+            padding: '1.25rem 1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '1rem',
+            backgroundColor: 'var(--bg-subtle)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <ShieldCheck size={16} color="var(--primary)" />
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              By lodging this grievance, you certify that the provided information is accurate.
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <Link to="/citizen/dashboard" className="btn btn-secondary">
+              Cancel
+            </Link>
+            <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <span>Registering Complaint...</span>
+              ) : (
+                <>
+                  <Send size={15} />
+                  <span>Submit Grievance</span>
+                </>
               )}
-            </div>
-
-            {/* Action Buttons */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.75rem' }}>
-              <Link to="/citizen/dashboard" className="btn btn-secondary">
-                Cancel
-              </Link>
-              <button type="submit" className="btn btn-primary btn-lg" disabled={isSubmitting}>
-                <PlusCircle size={18} />
-                <span>{isSubmitting ? 'Registering Grievance...' : 'Submit Grievance'}</span>
-              </button>
-            </div>
-          </form>
-        </div>
-
-        {/* Side Helper Guide Panel */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div className="card" style={{ backgroundColor: '#f8fafc', padding: '1.5rem' }}>
-            <div className="flex items-center gap-2" style={{ color: 'var(--primary)', marginBottom: '0.75rem' }}>
-              <Info size={20} />
-              <h3 style={{ fontSize: '1rem', fontWeight: 800 }}>Guidelines for Filing</h3>
-            </div>
-            <ul style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', lineHeight: 1.5 }}>
-              <li>Provide clear, precise landmark location details (house number, street name, nearest gate).</li>
-              <li>Describe the nature and severity of the civic issue accurately.</li>
-              <li>Do not file duplicate grievances for the same issue while one is already pending review.</li>
-              <li>Once submitted, track progress at any time via the <strong>Track Grievance</strong> menu.</li>
-            </ul>
-          </div>
-
-          <div className="card" style={{ padding: '1.5rem' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '0.5rem' }}>
-              What Happens Next?
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              <div className="flex items-start gap-2">
-                <CheckCircle2 size={16} color="var(--success)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                <span>An automated unique tracking number (GRV-...) is assigned immediately.</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <CheckCircle2 size={16} color="var(--success)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                <span>The municipal department reviews and designates a field officer within 24 hours.</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <CheckCircle2 size={16} color="var(--success)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                <span>You will receive real-time notifications on all officer actions and resolutions.</span>
-              </div>
-            </div>
+            </button>
           </div>
         </div>
-      </div>
+      </form>
     </div>
   );
 };

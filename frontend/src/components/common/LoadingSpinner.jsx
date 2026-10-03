@@ -1,11 +1,40 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
 
-export const LoadingSpinner = ({ text = 'Loading...', fullPage = false, size = 32 }) => {
-  const content = (
-    <div className="flex flex-col items-center justify-center gap-3 p-6" style={{ minHeight: fullPage ? '60vh' : 'auto' }}>
-      <Loader2 size={size} color="var(--primary)" style={{ animation: 'spin 1s linear infinite' }} />
-      {text && <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 500 }}>{text}</span>}
+export const LoadingSpinner = ({ text = 'Loading...', fullPage = false, size = 26 }) => {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '0.75rem',
+        padding: '2rem',
+        minHeight: fullPage ? '50vh' : 'auto',
+        width: '100%',
+      }}
+      role="status"
+      aria-live="polite"
+    >
+      <Loader2
+        size={size}
+        style={{
+          color: 'var(--primary)',
+          animation: 'spin 0.8s linear infinite',
+        }}
+      />
+      {text && (
+        <span
+          style={{
+            color: 'var(--text-muted)',
+            fontSize: '0.8125rem',
+            fontWeight: 500,
+          }}
+        >
+          {text}
+        </span>
+      )}
       <style>{`
         @keyframes spin {
           from { transform: rotate(0deg); }
@@ -14,8 +43,6 @@ export const LoadingSpinner = ({ text = 'Loading...', fullPage = false, size = 3
       `}</style>
     </div>
   );
-
-  return content;
 };
 
 export default LoadingSpinner;

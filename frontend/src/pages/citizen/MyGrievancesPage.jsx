@@ -8,16 +8,10 @@ import { PriorityBadge } from '../../components/common/PriorityBadge';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import {
   Search,
-  Filter,
   PlusCircle,
-  ArrowRight,
-  Inbox,
   RotateCcw,
-  Calendar,
-  Layers,
-  SearchCheck,
   Star,
-  CheckCircle2,
+  Layers,
 } from 'lucide-react';
 
 export const MyGrievancesPage = () => {
@@ -31,7 +25,7 @@ export const MyGrievancesPage = () => {
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || '');
   const [categoryFilter, setCategoryFilter] = useState(searchParams.get('category') || '');
   const [priorityFilter, setPriorityFilter] = useState('');
-  const [dateFilter, setDateFilter] = useState('ALL'); // ALL, TODAY, WEEK, MONTH
+  const [dateFilter, setDateFilter] = useState('ALL');
 
   const { showToast } = useToast();
 
@@ -58,7 +52,7 @@ export const MyGrievancesPage = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filteredGrievances = useMemo(() => {
     const now = new Date();
@@ -67,27 +61,25 @@ export const MyGrievancesPage = () => {
     const monthAgo = now.getTime() - 30 * 24 * 60 * 60 * 1000;
 
     return grievances.filter((item) => {
-      // 1. Text / Tracking # Search
       const matchSearch =
         !search.trim() ||
-        item.title.toLowerCase().includes(search.toLowerCase()) ||
-        item.grievance_number.toLowerCase().includes(search.toLowerCase()) ||
+        item.title?.toLowerCase().includes(search.toLowerCase()) ||
+        item.trackingNumber?.toLowerCase().includes(search.toLowerCase()) ||
         (item.description && item.description.toLowerCase().includes(search.toLowerCase())) ||
-        (item.department_name && item.department_name.toLowerCase().includes(search.toLowerCase()));
+        (item.department?.name && item.department.name.toLowerCase().includes(search.toLowerCase()));
 
-      // 2. Status Filter
       const matchStatus = !statusFilter || item.status === statusFilter;
 
-      // 3. Category Filter
-      const matchCategory = !categoryFilter || item.category_name === categoryFilter || String(item.category_id) === String(categoryFilter);
+      const matchCategory =
+        !categoryFilter ||
+        item.category?.name === categoryFilter ||
+        String(item.categoryId) === String(categoryFilter);
 
-      // 4. Priority Filter
       const matchPriority = !priorityFilter || item.priority === priorityFilter;
 
-      // 5. Date Filter
       let matchDate = true;
-      if (item.created_at) {
-        const itemTime = new Date(item.created_at).getTime();
+      if (item.createdAt) {
+        const itemTime = new Date(item.createdAt).getTime();
         if (dateFilter === 'TODAY') {
           matchDate = itemTime >= todayStart;
         } else if (dateFilter === 'WEEK') {
@@ -109,120 +101,123 @@ export const MyGrievancesPage = () => {
     setDateFilter('ALL');
   };
 
-  // Quick count calculations for filter chips
   const totalCount = grievances.length;
-  const pendingCount = grievances.filter((g) => ['SUBMITTED', 'UNDER_REVIEW', 'ASSIGNED'].includes(g.status)).length;
-  const inProgressCount = grievances.filter((g) => g.status === 'IN_PROGRESS').length;
-  const resolvedCount = grievances.filter((g) => ['RESOLVED', 'CLOSED'].includes(g.status)).length;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {/* Page Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)' }}>My Grievances</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-            View, track, filter, and monitor all civic complaints lodged under your account
+          <h1 style={{ fontSize: '1.45rem', fontWeight: 700, color: 'var(--text-heading)' }}>
+            My Grievances
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.84rem', marginTop: '0.15rem' }}>
+            Browse, filter, and track all complaints registered under your account
           </p>
         </div>
         <Link to="/citizen/submit" className="btn btn-primary">
-          <PlusCircle size={18} />
-          <span>Lodge New Grievance</span>
+          <PlusCircle size={15} />
+          <span>Lodge Grievance</span>
         </Link>
       </div>
 
-      {/* Quick Status Chips */}
-      <div className="filter-chip-group">
-        <button
-          className={`filter-chip ${statusFilter === '' ? 'active' : ''}`}
-          onClick={() => setStatusFilter('')}
-        >
-          <span>All Grievances</span>
-          <span className="badge" style={{ backgroundColor: 'rgba(0,0,0,0.06)', padding: '0.1rem 0.4rem' }}>
-            {totalCount}
-          </span>
-        </button>
-        <button
-          className={`filter-chip ${statusFilter === 'SUBMITTED' ? 'active' : ''}`}
-          onClick={() => setStatusFilter(statusFilter === 'SUBMITTED' ? '' : 'SUBMITTED')}
-        >
-          <span>Submitted</span>
-        </button>
-        <button
-          className={`filter-chip ${statusFilter === 'UNDER_REVIEW' ? 'active' : ''}`}
-          onClick={() => setStatusFilter(statusFilter === 'UNDER_REVIEW' ? '' : 'UNDER_REVIEW')}
-        >
-          <span>Under Review</span>
-        </button>
-        <button
-          className={`filter-chip ${statusFilter === 'ASSIGNED' ? 'active' : ''}`}
-          onClick={() => setStatusFilter(statusFilter === 'ASSIGNED' ? '' : 'ASSIGNED')}
-        >
-          <span>Assigned</span>
-        </button>
-        <button
-          className={`filter-chip ${statusFilter === 'IN_PROGRESS' ? 'active' : ''}`}
-          onClick={() => setStatusFilter(statusFilter === 'IN_PROGRESS' ? '' : 'IN_PROGRESS')}
-        >
-          <span>In Progress</span>
-          <span className="badge" style={{ backgroundColor: '#fef08a', color: '#854d0e', padding: '0.1rem 0.4rem' }}>
-            {inProgressCount}
-          </span>
-        </button>
-        <button
-          className={`filter-chip ${statusFilter === 'RESOLVED' ? 'active' : ''}`}
-          onClick={() => setStatusFilter(statusFilter === 'RESOLVED' ? '' : 'RESOLVED')}
-        >
-          <span>Resolved</span>
-          <span className="badge" style={{ backgroundColor: '#bbf7d0', color: '#166534', padding: '0.1rem 0.4rem' }}>
-            {resolvedCount}
-          </span>
-        </button>
-        <button
-          className={`filter-chip ${statusFilter === 'CLOSED' ? 'active' : ''}`}
-          onClick={() => setStatusFilter(statusFilter === 'CLOSED' ? '' : 'CLOSED')}
-        >
-          <span>Closed</span>
-        </button>
-      </div>
-
-      {/* Filter Control Bar */}
-      <div className="card" style={{ padding: '1.25rem' }}>
-        <div className="grid grid-cols-5 lg-grid-cols-2 md-grid-cols-1 gap-3 items-center">
-          {/* Search by tracking #, title, description */}
-          <div style={{ position: 'relative' }}>
-            <Search
-              size={18}
-              style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }}
-            />
-            <input
-              type="text"
-              className="form-input"
-              style={{ paddingLeft: '2.5rem' }}
-              placeholder="Search tracking #, title..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+      {/* Filter & Search Controls Bar */}
+      <div className="card" style={{ padding: '1rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {/* Status Tabs */}
+          <div style={{ overflowX: 'auto', paddingBottom: '2px' }}>
+            <div className="filter-chip-group">
+              <button
+                className={`filter-chip ${statusFilter === '' ? 'active' : ''}`}
+                onClick={() => setStatusFilter('')}
+              >
+                <span>All ({totalCount})</span>
+              </button>
+              <button
+                className={`filter-chip ${statusFilter === 'SUBMITTED' ? 'active' : ''}`}
+                onClick={() => setStatusFilter(statusFilter === 'SUBMITTED' ? '' : 'SUBMITTED')}
+              >
+                <span>Submitted</span>
+              </button>
+              <button
+                className={`filter-chip ${statusFilter === 'UNDER_REVIEW' ? 'active' : ''}`}
+                onClick={() => setStatusFilter(statusFilter === 'UNDER_REVIEW' ? '' : 'UNDER_REVIEW')}
+              >
+                <span>Under Review</span>
+              </button>
+              <button
+                className={`filter-chip ${statusFilter === 'ASSIGNED' ? 'active' : ''}`}
+                onClick={() => setStatusFilter(statusFilter === 'ASSIGNED' ? '' : 'ASSIGNED')}
+              >
+                <span>Assigned</span>
+              </button>
+              <button
+                className={`filter-chip ${statusFilter === 'IN_PROGRESS' ? 'active' : ''}`}
+                onClick={() => setStatusFilter(statusFilter === 'IN_PROGRESS' ? '' : 'IN_PROGRESS')}
+              >
+                <span>In Progress</span>
+              </button>
+              <button
+                className={`filter-chip ${statusFilter === 'RESOLVED' ? 'active' : ''}`}
+                onClick={() => setStatusFilter(statusFilter === 'RESOLVED' ? '' : 'RESOLVED')}
+              >
+                <span>Resolved</span>
+              </button>
+              <button
+                className={`filter-chip ${statusFilter === 'CLOSED' ? 'active' : ''}`}
+                onClick={() => setStatusFilter(statusFilter === 'CLOSED' ? '' : 'CLOSED')}
+              >
+                <span>Closed</span>
+              </button>
+            </div>
           </div>
 
-          {/* Category Filter */}
-          <div>
+          {/* Secondary filter selectors */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: '0.5rem',
+              alignItems: 'center',
+            }}
+          >
+            {/* Search input */}
+            <div style={{ position: 'relative', gridColumn: 'span 1' }}>
+              <input
+                type="text"
+                className="form-input"
+                style={{ paddingLeft: '2rem' }}
+                placeholder="Search title, tracking #..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              <Search
+                size={14}
+                color="var(--text-placeholder)"
+                style={{
+                  position: 'absolute',
+                  left: '0.7rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                }}
+              />
+            </div>
+
+            {/* Category */}
             <select
               className="form-select"
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
             >
               <option value="">All Categories</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.name}>
-                  {cat.name}
+              {categories.map((c) => (
+                <option key={c.id} value={c.name}>
+                  {c.name}
                 </option>
               ))}
             </select>
-          </div>
 
-          {/* Priority Filter */}
-          <div>
+            {/* Priority */}
             <select
               className="form-select"
               value={priorityFilter}
@@ -234,132 +229,185 @@ export const MyGrievancesPage = () => {
               <option value="HIGH">High</option>
               <option value="CRITICAL">Critical</option>
             </select>
-          </div>
 
-          {/* Date Filter */}
-          <div>
+            {/* Date filter */}
             <select
               className="form-select"
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
             >
               <option value="ALL">All Time</option>
-              <option value="TODAY">Filed Today</option>
+              <option value="TODAY">Today</option>
               <option value="WEEK">Last 7 Days</option>
               <option value="MONTH">Last 30 Days</option>
             </select>
-          </div>
 
-          {/* Reset Filters */}
-          <div>
-            <button onClick={handleResetFilters} className="btn btn-outline" style={{ width: '100%' }}>
-              <RotateCcw size={16} />
-              <span>Reset Filters</span>
-            </button>
+            {/* Reset */}
+            {(search || statusFilter || categoryFilter || priorityFilter || dateFilter !== 'ALL') && (
+              <button
+                onClick={handleResetFilters}
+                className="btn btn-outline btn-sm"
+                style={{ height: '36px' }}
+              >
+                <RotateCcw size={13} />
+                <span>Reset</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Grievances List Table */}
-      {isLoading ? (
-        <LoadingSpinner text="Fetching your grievances..." fullPage={true} />
-      ) : filteredGrievances.length === 0 ? (
-        <div className="card empty-state">
-          <Inbox size={48} className="empty-state-icon" />
-          <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-main)' }}>No Grievances Found</h3>
-          <p style={{ marginTop: '0.375rem', marginBottom: '1.25rem', fontSize: '0.875rem' }}>
-            {grievances.length === 0
-              ? "You haven't filed any grievances yet."
-              : 'No grievances match the current filter criteria.'}
-          </p>
-          {grievances.length === 0 ? (
-            <Link to="/citizen/submit" className="btn btn-primary">
-              <PlusCircle size={18} />
-              <span>Submit a Grievance</span>
-            </Link>
-          ) : (
-            <button onClick={handleResetFilters} className="btn btn-secondary">
-              Clear All Filters
-            </button>
-          )}
+      {/* Grievances Table / Content */}
+      <div className="card">
+        <div className="card-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span className="card-title">Grievance Records</span>
+            <span className="badge badge-subtle">{filteredGrievances.length} displayed</span>
+          </div>
         </div>
-      ) : (
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div className="table-container" style={{ border: 'none' }}>
+
+        {isLoading ? (
+          <LoadingSpinner text="Fetching your grievances..." />
+        ) : filteredGrievances.length === 0 ? (
+          <div style={{ padding: '3rem 1.5rem', textAlign: 'center' }}>
+            <div
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: 'var(--radius-sm)',
+                backgroundColor: 'var(--bg-subtle)',
+                color: 'var(--text-muted)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '0.75rem',
+              }}
+            >
+              <Layers size={20} />
+            </div>
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-heading)' }}>
+              No grievances found
+            </h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', marginTop: '0.25rem' }}>
+              {search || statusFilter || categoryFilter || priorityFilter
+                ? 'Try adjusting your filters or search query.'
+                : 'You have not registered any grievances yet.'}
+            </p>
+            <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
+              {(search || statusFilter || categoryFilter || priorityFilter) && (
+                <button onClick={handleResetFilters} className="btn btn-secondary btn-sm">
+                  Clear Filters
+                </button>
+              )}
+              <Link to="/citizen/submit" className="btn btn-primary btn-sm">
+                <PlusCircle size={14} />
+                <span>Lodge Grievance</span>
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="table-container" style={{ border: 'none', borderRadius: 0 }}>
             <table className="table">
               <thead>
                 <tr>
-                  <th>Tracking #</th>
-                  <th>Grievance Summary</th>
-                  <th>Department</th>
+                  <th>Tracking Code</th>
+                  <th>Title & Description</th>
+                  <th>Department & Category</th>
                   <th>Priority</th>
                   <th>Status</th>
-                  <th>Date Filed</th>
+                  <th>Date Lodged</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredGrievances.map((g) => (
-                  <tr key={g.id}>
-                    <td>
-                      <Link
-                        to={`/citizen/track?number=${g.grievance_number}`}
-                        style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--primary)' }}
-                        title="Click to track in real-time"
-                      >
-                        {g.grievance_number}
-                      </Link>
-                    </td>
-                    <td style={{ maxWidth: '320px' }}>
-                      <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{g.title}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                        {g.category_name} {g.location && `• 📍 ${g.location}`}
-                      </div>
-                    </td>
-                    <td>{g.department_name}</td>
-                    <td>
-                      <PriorityBadge priority={g.priority} />
-                    </td>
-                    <td>
-                      <StatusBadge status={g.status} />
-                    </td>
-                    <td style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                      {new Date(g.created_at).toLocaleDateString()}
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div className="flex items-center justify-end gap-2">
-                        <Link
-                          to={`/citizen/track?number=${g.grievance_number}`}
-                          className="btn btn-outline btn-sm"
-                          title="Track Timeline"
+                {filteredGrievances.map((item) => {
+                  const isResolved = ['RESOLVED', 'CLOSED'].includes(item.status);
+                  return (
+                    <tr key={item.id}>
+                      <td>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 600, fontSize: '0.8125rem' }}>
+                          {item.trackingNumber}
+                        </span>
+                      </td>
+                      <td style={{ maxWidth: '280px' }}>
+                        <div
+                          style={{
+                            fontWeight: 600,
+                            color: 'var(--text-heading)',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
                         >
-                          <SearchCheck size={14} />
-                          <span>Track</span>
-                        </Link>
-                        {['RESOLVED', 'CLOSED'].includes(g.status) && (
+                          {item.title}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: '0.75rem',
+                            color: 'var(--text-muted)',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            marginTop: '0.1rem',
+                          }}
+                        >
+                          {item.description}
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-heading)' }}>
+                          {item.department?.name || 'Assigned Dept'}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          {item.category?.name || 'General'}
+                        </div>
+                      </td>
+                      <td>
+                        <PriorityBadge priority={item.priority} />
+                      </td>
+                      <td>
+                        <StatusBadge status={item.status} />
+                      </td>
+                      <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                        {new Date(item.createdAt).toLocaleDateString()}
+                      </td>
+                      <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
                           <Link
-                            to={`/citizen/feedback?id=${g.id}`}
-                            className="btn btn-sm"
-                            style={{ backgroundColor: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }}
-                            title="Rate resolution"
+                            to={`/citizen/track?trackingNumber=${encodeURIComponent(item.trackingNumber)}`}
+                            className="btn btn-secondary btn-sm"
+                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
                           >
-                            <Star size={14} />
-                            <span>Feedback</span>
+                            Track
                           </Link>
-                        )}
-                        <Link to={`/grievances/${g.id}`} className="btn btn-secondary btn-sm" title="View discussion & details">
-                          <span>Details</span>
-                          <ArrowRight size={14} />
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          <Link
+                            to={`/grievances/${item.id}`}
+                            className="btn btn-outline btn-sm"
+                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                          >
+                            Details
+                          </Link>
+                          {isResolved && (
+                            <Link
+                              to={`/citizen/feedback?grievanceId=${item.id}`}
+                              className="btn btn-secondary btn-sm"
+                              style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', color: 'var(--primary)' }}
+                              title="Submit Resolution Feedback"
+                            >
+                              <Star size={12} />
+                              <span>Feedback</span>
+                            </Link>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

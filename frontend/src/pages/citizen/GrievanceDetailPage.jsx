@@ -23,6 +23,8 @@ import {
   UserCheck,
   CheckCircle,
   RefreshCw,
+  Star,
+  Paperclip,
 } from 'lucide-react';
 
 export const GrievanceDetailPage = () => {
@@ -96,6 +98,7 @@ export const GrievanceDetailPage = () => {
         status: statusForm.status,
         remarks: statusForm.remarks.trim() || undefined,
       });
+
       if (res.success) {
         showToast(`Status updated to ${statusForm.status}`, 'success');
         setIsStatusModalOpen(false);
@@ -108,21 +111,21 @@ export const GrievanceDetailPage = () => {
     }
   };
 
-  // Open assign officer modal
+  // Fetch officers for assignment
   const handleOpenAssignModal = async () => {
     setIsAssignModalOpen(true);
     try {
-      const res = await userApi.getAll({ role: 'OFFICER', active: true });
+      const res = await userApi.getAll({ role: 'OFFICER' });
       if (res.success && res.data?.users) {
         setOfficers(res.data.users);
       }
     } catch (err) {
-      showToast(err.message, 'error');
+      showToast('Failed to load officers: ' + err.message, 'error');
     }
   };
 
-  // Submit officer assignment
-  const handleAssignOfficerSubmit = async (e) => {
+  // Handle officer assignment
+  const handleAssignSubmit = async (e) => {
     e.preventDefault();
     if (!selectedOfficerId) return;
 
@@ -131,8 +134,9 @@ export const GrievanceDetailPage = () => {
       const res = await grievanceApi.assignOfficer(id, {
         officer_id: parseInt(selectedOfficerId, 10),
       });
+
       if (res.success) {
-        showToast('Officer assigned successfully', 'success');
+        showToast('Grievance assigned to officer successfully', 'success');
         setIsAssignModalOpen(false);
         fetchGrievanceDetails();
       }
@@ -144,386 +148,407 @@ export const GrievanceDetailPage = () => {
   };
 
   if (isLoading) {
-    return <LoadingSpinner text="Loading grievance details..." fullPage={true} />;
+    return <LoadingSpinner text="Loading grievance details..." fullPage />;
   }
 
   if (!grievance) {
     return (
-      <div className="card empty-state" style={{ maxWidth: '600px', margin: '3rem auto' }}>
-        <h2>Grievance Not Found</h2>
-        <p style={{ marginTop: '0.5rem', marginBottom: '1.5rem' }}>
+      <div className="card" style={{ padding: '3rem', textAlign: 'center', maxWidth: '600px', margin: '2rem auto' }}>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-heading)' }}>
+          Grievance Not Found
+        </h3>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.84rem', marginTop: '0.35rem' }}>
           The requested grievance record does not exist or you do not have permission to view it.
         </p>
-        <button onClick={() => navigate(-1)} className="btn btn-primary">
-          <ArrowLeft size={16} />
-          <span>Go Back</span>
+        <button onClick={() => navigate(-1)} className="btn btn-primary btn-sm" style={{ marginTop: '1rem' }}>
+          Go Back
         </button>
       </div>
     );
   }
 
+  const isResolved = ['RESOLVED', 'CLOSED'].includes(grievance.status);
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '1200px', margin: '0 auto' }}>
-      {/* Navigation and Top Bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-        <button onClick={() => navigate(-1)} className="btn btn-outline btn-sm">
-          <ArrowLeft size={16} />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '1020px', margin: '0 auto' }}>
+      {/* Top Navigation Strip */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+        <button onClick={() => navigate(-1)} className="btn btn-secondary btn-sm">
+          <ArrowLeft size={14} />
           <span>Back</span>
         </button>
 
-        <div className="flex items-center gap-2">
-          {/* Quick Track link for all users */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
           <Link
-            to={`/citizen/track?number=${grievance.grievance_number}`}
+            to={`/citizen/track?trackingNumber=${encodeURIComponent(grievance.trackingNumber)}`}
             className="btn btn-outline btn-sm"
-            title="View Visual Status Stepper"
           >
-            <History size={16} />
-            <span>Track Timeline</span>
+            <span>Track Progress</span>
           </Link>
 
-          {/* Citizen Feedback prompt if resolved */}
-          {user?.role === 'CITIZEN' && ['RESOLVED', 'CLOSED'].includes(grievance.status) && (
-            <Link
-              to={`/citizen/feedback?id=${grievance.id}`}
-              className="btn btn-sm"
-              style={{ backgroundColor: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', fontWeight: 700 }}
+          {(isOfficer || isAdmin) && (
+            <button
+              onClick={() => setIsStatusModalOpen(true)}
+              className="btn btn-secondary btn-sm"
             >
-              <span>⭐ Rate Resolution</span>
-            </Link>
+              <RefreshCw size={13} />
+              <span>Update Status</span>
+            </button>
           )}
 
-          {/* Action Controls for Officer/Admin */}
-          {(isOfficer || isAdmin) && (
-            <>
-              {isAdmin && (
-                <button onClick={handleOpenAssignModal} className="btn btn-secondary btn-sm">
-                  <UserCheck size={16} />
-                  <span>Assign Officer</span>
-                </button>
-              )}
-              <button onClick={() => setIsStatusModalOpen(true)} className="btn btn-primary btn-sm">
-                <RefreshCw size={16} />
-                <span>Update Status</span>
-              </button>
-            </>
+          {isAdmin && (
+            <button
+              onClick={handleOpenAssignModal}
+              className="btn btn-primary btn-sm"
+            >
+              <UserCheck size={13} />
+              <span>Assign Officer</span>
+            </button>
+          )}
+
+          {isResolved && user?.role === 'CITIZEN' && (
+            <Link
+              to={`/citizen/feedback?grievanceId=${grievance.id}`}
+              className="btn btn-primary btn-sm"
+            >
+              <Star size={13} />
+              <span>Submit Feedback</span>
+            </Link>
           )}
         </div>
       </div>
 
-      {/* Citizen Feedback Resolution Callout Banner */}
-      {user?.role === 'CITIZEN' && ['RESOLVED', 'CLOSED'].includes(grievance.status) && (
-        <div
-          className="card"
-          style={{
-            backgroundColor: '#ecfdf5',
-            border: '1px solid #a7f3d0',
-            padding: '1.25rem 1.5rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '1rem',
-          }}
-        >
-          <div className="flex items-center gap-3">
-            <CheckCircle size={24} color="#059669" />
+      {/* Main Dossier Card */}
+      <div className="card">
+        <div className="card-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-heading)' }}>
+              {grievance.trackingNumber}
+            </span>
+            <span className="badge badge-subtle">ID #{grievance.id}</span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <PriorityBadge priority={grievance.priority} />
+            <StatusBadge status={grievance.status} />
+          </div>
+        </div>
+
+        <div className="card-body">
+          <h1 style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-heading)', marginBottom: '0.5rem' }}>
+            {grievance.title}
+          </h1>
+
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-main)', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginBottom: '1.5rem' }}>
+            {grievance.description}
+          </p>
+
+          {/* Grievance Metadata Grid */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '0.85rem',
+              padding: '1rem',
+              backgroundColor: 'var(--bg-subtle)',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--border-subtle)',
+            }}
+          >
             <div>
-              <div style={{ fontWeight: 800, color: '#065f46', fontSize: '0.9375rem' }}>
-                Grievance Marked as {grievance.status}
-              </div>
-              <div style={{ fontSize: '0.8125rem', color: '#047857' }}>
-                Municipal works have been completed. Please take a moment to provide your satisfaction rating.
+              <span className="text-xs text-muted font-medium" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                <Building2 size={13} /> Responsible Department
+              </span>
+              <div style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-heading)', marginTop: '0.15rem' }}>
+                {grievance.department?.name || 'General Administration'}
               </div>
             </div>
+
+            <div>
+              <span className="text-xs text-muted font-medium" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                <Tags size={13} /> Category
+              </span>
+              <div style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-heading)', marginTop: '0.15rem' }}>
+                {grievance.category?.name || 'General'}
+              </div>
+            </div>
+
+            <div>
+              <span className="text-xs text-muted font-medium" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                <User size={13} /> Lodged By
+              </span>
+              <div style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-heading)', marginTop: '0.15rem' }}>
+                {grievance.citizen?.name || 'Citizen'}
+              </div>
+            </div>
+
+            <div>
+              <span className="text-xs text-muted font-medium" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                <ShieldCheck size={13} /> Assigned Officer
+              </span>
+              <div style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-heading)', marginTop: '0.15rem' }}>
+                {grievance.assignedOfficer?.name || 'Unassigned'}
+              </div>
+            </div>
+
+            {grievance.location && (
+              <div style={{ gridColumn: 'span 2' }}>
+                <span className="text-xs text-muted font-medium" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                  <MapPin size={13} /> Location Landmark
+                </span>
+                <div style={{ fontSize: '0.84rem', color: 'var(--text-main)', marginTop: '0.15rem' }}>
+                  {grievance.location}
+                </div>
+              </div>
+            )}
+
+            {grievance.attachmentPath && (
+              <div style={{ gridColumn: 'span 2' }}>
+                <span className="text-xs text-muted font-medium" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                  <Paperclip size={13} /> Evidence Attachment
+                </span>
+                <div style={{ fontSize: '0.84rem', color: 'var(--primary)', marginTop: '0.15rem' }}>
+                  <a
+                    href={`/${grievance.attachmentPath}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ textDecoration: 'underline' }}
+                  >
+                    View Attachment Document
+                  </a>
+                </div>
+              </div>
+            )}
           </div>
-          <Link
-            to={`/citizen/feedback?id=${grievance.id}`}
-            className="btn btn-primary btn-sm"
-            style={{ backgroundColor: '#059669', borderColor: '#059669' }}
-          >
-            <span>Provide Feedback</span>
-          </Link>
+        </div>
+      </div>
+
+      {/* Discussion & Officer Remarks Thread */}
+      <div className="card">
+        <div className="card-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <MessageSquare size={16} color="var(--primary)" />
+            <span className="card-title">Case Discussion & Officer Communication</span>
+          </div>
+          <span className="badge badge-subtle">
+            {grievance.comments ? grievance.comments.length : 0} messages
+          </span>
+        </div>
+
+        <div className="card-body">
+          {/* Comments List */}
+          {grievance.comments && grievance.comments.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', marginBottom: '1.5rem' }}>
+              {grievance.comments.map((cmt) => {
+                const isMine = cmt.user?.id === user?.id;
+                const isOfficial = ['OFFICER', 'ADMIN'].includes(cmt.user?.role);
+
+                return (
+                  <div
+                    key={cmt.id}
+                    style={{
+                      padding: '0.85rem 1rem',
+                      borderRadius: 'var(--radius-sm)',
+                      backgroundColor: isOfficial ? 'var(--bg-subtle)' : 'var(--bg-surface)',
+                      border: `1px solid ${isOfficial ? 'var(--border-strong)' : 'var(--border-color)'}`,
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ fontWeight: 600, fontSize: '0.84rem', color: 'var(--text-heading)' }}>
+                          {cmt.user?.name || 'User'}
+                        </span>
+                        <RoleBadge role={cmt.user?.role} />
+                        {isMine && <span className="badge badge-subtle" style={{ fontSize: '0.65rem' }}>You</span>}
+                      </div>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        {new Date(cmt.createdAt).toLocaleString()}
+                      </span>
+                    </div>
+
+                    <p style={{ fontSize: '0.84rem', color: 'var(--text-main)', lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>
+                      {cmt.message}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', textAlign: 'center', padding: '1rem 0' }}>
+              No messages posted on this case yet. Use the box below to send questions or remarks.
+            </p>
+          )}
+
+          {/* New Comment Form */}
+          <form onSubmit={handleAddComment} style={{ display: 'flex', gap: '0.5rem' }}>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Type your message or follow-up question here..."
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              disabled={isSubmittingComment}
+            />
+            <button type="submit" className="btn btn-primary" disabled={isSubmittingComment || !newComment.trim()}>
+              <Send size={14} />
+              <span>Send</span>
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* Status History Audit Log */}
+      {grievance.statusHistory && grievance.statusHistory.length > 0 && (
+        <div className="card">
+          <div className="card-header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <History size={16} color="var(--primary)" />
+              <span className="card-title">Audit Trail & Inspection Log</span>
+            </div>
+          </div>
+
+          <div className="table-container" style={{ border: 'none', borderRadius: 0 }}>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Updated Status</th>
+                  <th>Changed By</th>
+                  <th>Remarks / Notes</th>
+                  <th>Timestamp</th>
+                </tr>
+              </thead>
+              <tbody>
+                {grievance.statusHistory.map((item, idx) => (
+                  <tr key={item.id || idx}>
+                    <td>
+                      <StatusBadge status={item.to_status || item.newStatus || item.status} />
+                    </td>
+                    <td style={{ fontSize: '0.8125rem', fontWeight: 500 }}>
+                      {item.changed_by_name || item.user?.name || 'Department Officer'}
+                    </td>
+                    <td style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                      {item.remarks || 'No remarks provided'}
+                    </td>
+                    <td style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                      {new Date(item.created_at || item.createdAt).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
-      {/* Main Header Card */}
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-              <span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '1.125rem', color: 'var(--primary)' }}>
-                {grievance.grievance_number}
-              </span>
-              <StatusBadge status={grievance.status} />
-              <PriorityBadge priority={grievance.priority} />
-            </div>
-            <h1 style={{ fontSize: '1.625rem', fontWeight: 800, color: 'var(--text-main)' }}>{grievance.title}</h1>
-          </div>
-
-          <div style={{ textAlign: 'right', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-            <div>Filed on: <strong>{new Date(grievance.created_at).toLocaleString()}</strong></div>
-            {grievance.resolved_at && (
-              <div style={{ color: 'var(--success)', fontWeight: 600, marginTop: '0.25rem' }}>
-                Resolved on: {new Date(grievance.resolved_at).toLocaleString()}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Metadata Details Pills Grid */}
-        <div className="grid grid-cols-4 lg-grid-cols-2 md-grid-cols-1 gap-3" style={{ backgroundColor: '#f8fafc', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-          <div className="flex items-center gap-2">
-            <Building2 size={18} color="var(--primary)" />
-            <div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Department</div>
-              <div style={{ fontSize: '0.875rem', fontWeight: 600 }}>{grievance.department_name}</div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Tags size={18} color="var(--accent)" />
-            <div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Category</div>
-              <div style={{ fontSize: '0.875rem', fontWeight: 600 }}>{grievance.category_name}</div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <User size={18} color="#0284c7" />
-            <div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Citizen / Complainant</div>
-              <div style={{ fontSize: '0.875rem', fontWeight: 600 }}>{grievance.citizen_name}</div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <ShieldCheck size={18} color="#059669" />
-            <div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Assigned Officer</div>
-              <div style={{ fontSize: '0.875rem', fontWeight: 600 }}>
-                {grievance.officer_name ? grievance.officer_name : <span style={{ color: 'var(--text-light)', fontStyle: 'italic' }}>Unassigned</span>}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Location, Attachment & Description */}
-        <div style={{ marginTop: '1.5rem' }}>
-          <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-            {grievance.location && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                <MapPin size={16} color="var(--danger)" />
-                <span><strong>Location:</strong> {grievance.location}</span>
-              </div>
-            )}
-            {grievance.attachment_path && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary)', fontSize: '0.875rem', fontWeight: 600 }}>
-                <span>📎 Attachment: {grievance.attachment_path.split('/').pop()}</span>
-              </div>
-            )}
-          </div>
-
-          <div style={{ marginTop: '0.75rem' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.5rem' }}>Description</h3>
-            <div
-              style={{
-                backgroundColor: '#ffffff',
-                padding: '1.25rem',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--border-color)',
-                lineHeight: 1.6,
-                whiteSpace: 'pre-line',
-                fontSize: '0.9375rem',
-              }}
-            >
-              {grievance.description}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Grid: Comments Thread (Left) & Status Audit Timeline (Right) */}
-      <div className="grid grid-cols-2 md-grid-cols-1 gap-6">
-        {/* Comments Section */}
-        <div className="card">
-          <div className="card-header">
-            <div className="flex items-center gap-2">
-              <MessageSquare size={20} color="var(--primary)" />
-              <h3 className="card-title">Discussion & Updates ({grievance.comments?.length || 0})</h3>
-            </div>
-          </div>
-
-          {/* Comment Form */}
-          <form onSubmit={handleAddComment} style={{ marginBottom: '1.5rem' }}>
-            <div className="form-group">
-              <textarea
-                className="form-textarea"
-                rows={3}
-                placeholder="Write a message, inquiry, or update..."
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                disabled={isSubmittingComment}
-              />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button type="submit" className="btn btn-primary btn-sm" disabled={isSubmittingComment || !newComment.trim()}>
-                <Send size={14} />
-                <span>{isSubmittingComment ? 'Posting...' : 'Post Message'}</span>
-              </button>
-            </div>
-          </form>
-
-          {/* Comments List */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {!grievance.comments || grievance.comments.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                No messages yet. Start the conversation above.
-              </div>
-            ) : (
-              grievance.comments.map((c) => (
-                <div
-                  key={c.id}
-                  style={{
-                    padding: '1rem',
-                    backgroundColor: '#f8fafc',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--border-color)',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.375rem' }}>
-                    <div className="flex items-center gap-2">
-                      <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-main)' }}>{c.user_name}</span>
-                      <RoleBadge role={c.user_role} />
-                    </div>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      {new Date(c.created_at).toLocaleString()}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '0.875rem', color: 'var(--text-main)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
-                    {c.message}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Status Audit Timeline Section */}
-        <div className="card">
-          <div className="card-header">
-            <div className="flex items-center gap-2">
-              <History size={20} color="var(--primary)" />
-              <h3 className="card-title">Status Audit Trail</h3>
-            </div>
-          </div>
-
-          <div className="timeline">
-            {grievance.status_history?.map((h, index) => (
-              <div key={h.id || index} className="timeline-item">
-                <div className="timeline-dot" />
-                <div className="timeline-content">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                    <StatusBadge status={h.new_status} />
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      {new Date(h.created_at).toLocaleString()}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.375rem' }}>
-                    Updated by <strong>{h.changed_by_name}</strong> ({h.changed_by_role})
-                  </div>
-                  {h.remarks && (
-                    <div style={{ fontSize: '0.875rem', color: 'var(--text-main)', marginTop: '0.5rem', fontStyle: 'italic' }}>
-                      "{h.remarks}"
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Modal: Update Status */}
+      {/* Status Update Modal (Officer/Admin) */}
       <Modal
         isOpen={isStatusModalOpen}
         onClose={() => setIsStatusModalOpen(false)}
         title="Update Grievance Status"
         footer={
           <>
-            <button onClick={() => setIsStatusModalOpen(false)} className="btn btn-secondary">
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => setIsStatusModalOpen(false)}
+            >
               Cancel
             </button>
-            <button onClick={handleUpdateStatusSubmit} className="btn btn-primary" disabled={isUpdatingStatus}>
-              {isUpdatingStatus ? 'Saving...' : 'Update Status'}
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={handleUpdateStatusSubmit}
+              disabled={isUpdatingStatus}
+            >
+              <CheckCircle size={14} />
+              <span>{isUpdatingStatus ? 'Updating...' : 'Confirm Update'}</span>
             </button>
           </>
         }
       >
-        <form onSubmit={handleUpdateStatusSubmit}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div className="form-group">
-            <label className="form-label">New Status</label>
+            <label className="form-label" htmlFor="status-select">
+              <span>Select New Status</span>
+              <span className="form-label-required">*</span>
+            </label>
             <select
+              id="status-select"
               className="form-select"
               value={statusForm.status}
               onChange={(e) => setStatusForm((prev) => ({ ...prev, status: e.target.value }))}
             >
-              <option value="SUBMITTED">Submitted</option>
-              <option value="UNDER_REVIEW">Under Review</option>
-              <option value="ASSIGNED">Assigned</option>
-              <option value="IN_PROGRESS">In Progress</option>
-              <option value="RESOLVED">Resolved</option>
-              <option value="REJECTED">Rejected</option>
-              <option value="CLOSED">Closed</option>
+              <option value="SUBMITTED">SUBMITTED</option>
+              <option value="UNDER_REVIEW">UNDER_REVIEW</option>
+              <option value="ASSIGNED">ASSIGNED</option>
+              <option value="IN_PROGRESS">IN_PROGRESS</option>
+              <option value="RESOLVED">RESOLVED</option>
+              <option value="REJECTED">REJECTED</option>
+              <option value="CLOSED">CLOSED</option>
             </select>
           </div>
 
           <div className="form-group">
-            <label className="form-label">Audit Remarks / Justification</label>
+            <label className="form-label" htmlFor="status-remarks">
+              <span>Investigation Remarks / Action Taken</span>
+            </label>
             <textarea
-              className="form-textarea"
+              id="status-remarks"
               rows={3}
-              placeholder="e.g. Work started by technical maintenance team..."
+              className="form-textarea"
+              placeholder="Enter details of field inspection, repair executed, or reason for status change..."
               value={statusForm.remarks}
               onChange={(e) => setStatusForm((prev) => ({ ...prev, remarks: e.target.value }))}
             />
           </div>
-        </form>
+        </div>
       </Modal>
 
-      {/* Modal: Assign Officer (Admin) */}
+      {/* Assign Officer Modal (Admin) */}
       <Modal
         isOpen={isAssignModalOpen}
         onClose={() => setIsAssignModalOpen(false)}
-        title="Assign Officer to Grievance"
+        title="Assign Field Officer"
         footer={
           <>
-            <button onClick={() => setIsAssignModalOpen(false)} className="btn btn-secondary">
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => setIsAssignModalOpen(false)}
+            >
               Cancel
             </button>
-            <button onClick={handleAssignOfficerSubmit} className="btn btn-primary" disabled={isAssigning || !selectedOfficerId}>
-              {isAssigning ? 'Assigning...' : 'Confirm Assignment'}
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={handleAssignSubmit}
+              disabled={isAssigning || !selectedOfficerId}
+            >
+              <UserCheck size={14} />
+              <span>{isAssigning ? 'Assigning...' : 'Assign Officer'}</span>
             </button>
           </>
         }
       >
-        <form onSubmit={handleAssignOfficerSubmit}>
-          <div className="form-group">
-            <label className="form-label">Select Designated Officer</label>
-            <select
-              className="form-select"
-              value={selectedOfficerId}
-              onChange={(e) => setSelectedOfficerId(e.target.value)}
-            >
-              <option value="">-- Choose Officer --</option>
-              {officers.map((off) => (
-                <option key={off.id} value={off.id}>
-                  {off.name} ({off.email}) - {off.department_name || 'General'}
-                </option>
-              ))}
-            </select>
-          </div>
-        </form>
+        <div className="form-group">
+          <label className="form-label" htmlFor="officer-select">
+            <span>Select Municipal Officer</span>
+            <span className="form-label-required">*</span>
+          </label>
+          <select
+            id="officer-select"
+            className="form-select"
+            value={selectedOfficerId}
+            onChange={(e) => setSelectedOfficerId(e.target.value)}
+          >
+            <option value="">-- Choose Officer --</option>
+            {officers.map((off) => (
+              <option key={off.id} value={off.id}>
+                {off.name} ({off.email}) - {off.department?.name || 'Department'}
+              </option>
+            ))}
+          </select>
+        </div>
       </Modal>
     </div>
   );

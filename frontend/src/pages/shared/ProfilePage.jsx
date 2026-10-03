@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { userApi } from '../../api/users';
 import { RoleBadge } from '../../components/common/RoleBadge';
-import { User, Mail, Phone, Lock, Save, Shield, KeyRound, Building2 } from 'lucide-react';
+import { User, Mail, Phone, Lock, Save, Shield, KeyRound, Building2, ShieldCheck } from 'lucide-react';
 
 export const ProfilePage = () => {
   const { user, refreshUser } = useAuth();
@@ -85,51 +85,67 @@ export const ProfilePage = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '1000px', margin: '0 auto' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '1050px', margin: '0 auto' }}>
       {/* Header */}
       <div>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)' }}>Account Settings & Profile</h1>
+        <h1 style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--text-heading)' }}>
+          Account Settings & Profile
+        </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
           Manage your personal details, contact number, and update account security credentials
         </p>
       </div>
 
       {/* Account Overview Header Card */}
-      <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
+      <div
+        className="card"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1.75rem',
+          flexWrap: 'wrap',
+          padding: '2rem',
+          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+        }}
+      >
         <div
           style={{
-            width: '68px',
-            height: '68px',
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #2563eb, #6366f1)',
+            width: '74px',
+            height: '74px',
+            borderRadius: 'var(--radius-lg)',
+            background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: '#ffffff',
-            fontSize: '1.75rem',
+            fontSize: '2rem',
             fontWeight: 800,
-            boxShadow: '0 4px 12px var(--primary-glow)',
+            boxShadow: '0 6px 16px var(--primary-glow)',
+            flexShrink: 0,
           }}
         >
           {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
         </div>
 
-        <div style={{ flex: 1 }}>
-          <div className="flex items-center gap-3">
-            <h2 style={{ fontSize: '1.375rem', fontWeight: 800 }}>{user?.name}</h2>
+        <div style={{ flex: 1, minWidth: '220px' }}>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h2 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-heading)' }}>
+              {user?.name}
+            </h2>
             <RoleBadge role={user?.role} />
           </div>
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-            {user?.email} {user?.phone && `• 📞 ${user.phone}`}
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '0.35rem' }}>
+            <span>{user?.email}</span>
+            {user?.phone && <span> • 📞 {user.phone}</span>}
           </div>
         </div>
       </div>
 
       {/* Two Column Grid: Update Profile & Change Password */}
-      <div className="grid grid-cols-2 md-grid-cols-1 gap-6">
+      <div className="grid grid-cols-2 md-grid-cols-1 gap-6 items-start">
         {/* Personal Details Form */}
-        <div className="card">
-          <div className="card-header">
+        <div className="card" style={{ padding: '2rem' }}>
+          <div className="card-header" style={{ marginBottom: '1.5rem' }}>
             <div className="flex items-center gap-2">
               <User size={20} color="var(--primary)" />
               <h3 className="card-title">Personal Details</h3>
@@ -138,7 +154,9 @@ export const ProfilePage = () => {
 
           <form onSubmit={handleProfileSubmit}>
             <div className="form-group">
-              <label className="form-label">Full Name <span className="required">*</span></label>
+              <label className="form-label">
+                Full Name <span className="required">*</span>
+              </label>
               <input
                 type="text"
                 className="form-input"
@@ -155,7 +173,7 @@ export const ProfilePage = () => {
                 className="form-input"
                 value={user?.email || ''}
                 disabled
-                style={{ backgroundColor: '#f1f5f9', cursor: 'not-allowed' }}
+                style={{ backgroundColor: '#f1f5f9', cursor: 'not-allowed', color: 'var(--text-muted)' }}
               />
             </div>
 
@@ -171,8 +189,8 @@ export const ProfilePage = () => {
               />
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
-              <button type="submit" className="btn btn-primary" disabled={isUpdatingProfile}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.75rem' }}>
+              <button type="submit" className="btn btn-primary" disabled={isUpdatingProfile} style={{ fontWeight: 700 }}>
                 <Save size={16} />
                 <span>{isUpdatingProfile ? 'Saving...' : 'Save Profile'}</span>
               </button>
@@ -181,8 +199,8 @@ export const ProfilePage = () => {
         </div>
 
         {/* Change Password Form */}
-        <div className="card">
-          <div className="card-header">
+        <div className="card" style={{ padding: '2rem' }}>
+          <div className="card-header" style={{ marginBottom: '1.5rem' }}>
             <div className="flex items-center gap-2">
               <KeyRound size={20} color="var(--primary)" />
               <h3 className="card-title">Security & Password</h3>
@@ -191,7 +209,9 @@ export const ProfilePage = () => {
 
           <form onSubmit={handlePasswordSubmit}>
             <div className="form-group">
-              <label className="form-label">Current Password <span className="required">*</span></label>
+              <label className="form-label">
+                Current Password <span className="required">*</span>
+              </label>
               <input
                 type="password"
                 className="form-input"
@@ -203,7 +223,9 @@ export const ProfilePage = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">New Password <span className="required">*</span></label>
+              <label className="form-label">
+                New Password <span className="required">*</span>
+              </label>
               <input
                 type="password"
                 className="form-input"
@@ -215,7 +237,9 @@ export const ProfilePage = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Confirm New Password <span className="required">*</span></label>
+              <label className="form-label">
+                Confirm New Password <span className="required">*</span>
+              </label>
               <input
                 type="password"
                 className="form-input"
@@ -226,8 +250,8 @@ export const ProfilePage = () => {
               />
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
-              <button type="submit" className="btn btn-primary" disabled={isChangingPassword}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.75rem' }}>
+              <button type="submit" className="btn btn-primary" disabled={isChangingPassword} style={{ fontWeight: 700 }}>
                 <Lock size={16} />
                 <span>{isChangingPassword ? 'Changing Password...' : 'Update Password'}</span>
               </button>
