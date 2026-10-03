@@ -397,7 +397,7 @@ CivicCare follows a **three-tier full-stack architecture**.
 
 ---
 
-# 🔄Application Flow
+# Application Flow
 
 ```text
 Citizen
